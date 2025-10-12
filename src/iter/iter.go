@@ -500,3 +500,25 @@ func Reduce[A, B, R any](res R, f func(R, A, B) R, seq Seq2[A, B]) R {
 	}
 	return res
 }
+
+// Keys returns an iterator over keys from given key-value pairs.
+func Keys[A, B any](seq Seq2[A, B]) Seq[A] {
+	return func(yield func(A) bool) {
+		for a := range seq {
+			if !yield(a) {
+				break
+			}
+		}
+	}
+}
+
+// Values returns an iterator over values from given key-value pairs.
+func Values[A, B any](seq Seq2[A, B]) Seq[B] {
+	return func(yield func(B) bool) {
+		for _, b := range seq {
+			if !yield(b) {
+				break
+			}
+		}
+	}
+}
