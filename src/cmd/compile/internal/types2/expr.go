@@ -785,13 +785,16 @@ func init() {
 	}
 }
 
-func (check *Checker) ternary(T *target, x *operand, e *syntax.TernaryExpr) {
-	var y operand
-	check.expr(nil, x, e.Else)
-	check.expr(nil, &y, e.Then)
+func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
+	var t, e operand
+	check.expr(nil, &t, tern.Else)
+	check.expr(nil, &e, tern.Then)
+	if t.mode == invalid || e.mode == invalid {
+		return
+	}
 
 	var c operand
-	check.expr(nil, &c, e.Cond)
+	check.expr(nil, &c, tern.Cond)
 	if c.mode == invalid {
 		return
 	}
@@ -799,18 +802,18 @@ func (check *Checker) ternary(T *target, x *operand, e *syntax.TernaryExpr) {
 		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be boolean")
 	}
 
-	if x.mode == invalid {
-		return
-	}
-	if y.mode == invalid {
-		x.mode = invalid
-		x.expr = y.expr
-		return
+	if !Identical(t.typ, e.typ) {
+		check.errorf(x, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical: %q and %q", t.typ, e.typ)
 	}
 
-	if !Identical(x.typ, y.typ) {
-		check.errorf(x, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical")
-	}
+	x.typ = t.typ
+	x.mode = value
+
+	tern.BuildRepr(&syntax.Name{Value: t.typ.String()})
+
+	var k operand
+	// Needed to register all the expression types to context
+	check.expr(nil, &k, tern.Repr())
 }
 
 // If e != nil, it must be the binary expression; it may be nil for non-constant expressions
@@ -1116,7 +1119,7 @@ func (check *Checker) exprInternal(Target *target, x *operand, e syntax.Expr, hi
 			goto Error
 		}
 	case *syntax.TernaryExpr:
-		check.ternary(Target, x, e)
+		check.ternary(x, e)
 	case *syntax.SliceExpr:
 		check.sliceExpr(x, e)
 		if x.mode == invalid {

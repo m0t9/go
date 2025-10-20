@@ -1884,9 +1884,7 @@ func (w *writer) expr(expr syntax.Expr) {
 		w.funcLit(expr)
 
 	case *syntax.TernaryExpr:
-		x := w.p.typeOf(expr.Then)
-		w.p.unexpected(fmt.Sprintf("%v", x), expr)
-		// CONTINUE FROM HERE
+		w.expr(expr.Repr())
 
 	case *syntax.SelectorExpr:
 		sel, ok := w.p.info.Selections[expr]

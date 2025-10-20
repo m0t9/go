@@ -216,6 +216,7 @@ type (
 
 	TernaryExpr struct {
 		Cond, Then, Else Expr
+		repr             Expr
 		expr
 	}
 
@@ -489,4 +490,46 @@ type Comment struct {
 	Kind CommentKind
 	Text string
 	Next *Comment
+}
+
+func (expr *TernaryExpr) Repr() Expr {
+	if expr.repr == nil {
+		panic("no ternary expr representation built")
+	}
+	return expr.repr
+}
+
+func (expr *TernaryExpr) BuildRepr(retType Expr) {
+	expr.repr = &CallExpr{
+		Fun: &FuncLit{
+			Type: &FuncType{
+				ResultList: []*Field{
+					{
+						Type: retType,
+					},
+				},
+			},
+			Body: &BlockStmt{
+				List: []Stmt{
+					&IfStmt{
+						Cond: expr.Cond,
+						Then: &BlockStmt{
+							List: []Stmt{
+								&ReturnStmt{
+									Results: expr.Then,
+								},
+							},
+						},
+						Else: &BlockStmt{
+							List: []Stmt{
+								&ReturnStmt{
+									Results: expr.Else,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
