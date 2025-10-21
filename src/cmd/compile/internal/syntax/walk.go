@@ -167,6 +167,11 @@ func (w walker) node(n Node) {
 		w.node(n.Fun)
 		w.exprList(n.ArgList)
 
+	case *TernaryExpr:
+		w.node(n.Cond)
+		w.node(n.Then)
+		w.node(n.Else)
+
 	case *ListExpr:
 		w.exprList(n.ElemList)
 

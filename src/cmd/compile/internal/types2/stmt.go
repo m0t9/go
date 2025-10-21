@@ -186,7 +186,7 @@ func (check *Checker) suspendedCall(keyword string, call syntax.Expr) {
 	case statement:
 		return
 	default:
-		panic("unreachable")
+		panic("unreachable5")
 	}
 	check.errorf(&x, code, "%s %s %s", keyword, msg, &x)
 }

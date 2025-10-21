@@ -84,7 +84,7 @@ func (check *Checker) recordBuiltinType(f syntax.Expr, sig *Signature) {
 		case *syntax.ParenExpr:
 			f = p.X
 		default:
-			panic("unreachable")
+			panic("unreachable1")
 		}
 	}
 }

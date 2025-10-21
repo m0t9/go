@@ -77,15 +77,15 @@ start:
 		if s.Init != nil {
 			b.stmt(s.Init)
 		}
-		then := b.newBlock(KindIfThen, s)
+		thenBlock := b.newBlock(KindIfThen, s)
 		done := b.newBlock(KindIfDone, s)
 		_else := done
 		if s.Else != nil {
 			_else = b.newBlock(KindIfElse, s)
 		}
 		b.add(s.Cond)
-		b.ifelse(then, _else)
-		b.current = then
+		b.ifelse(thenBlock, _else)
+		b.current = thenBlock
 		b.stmt(s.Body)
 		b.jump(done)
 

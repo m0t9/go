@@ -286,11 +286,11 @@ func (check *Checker) updateExprType(x syntax.Expr, typ Type, final bool) {
 		// upon assignment or use.
 		if debug {
 			check.dump("%v: found old type(%s): %s (new: %s)", atPos(x), x, old.typ, typ)
-			panic("unreachable")
+			panic("unreachable14")
 		}
 		return
 
-	case *syntax.CallExpr:
+	case *syntax.CallExpr, *syntax.TernaryExpr:
 		// Resulting in an untyped constant (e.g., built-in complex).
 		// The respective calls take care of calling updateExprType
 		// for the arguments if necessary.
@@ -355,7 +355,7 @@ func (check *Checker) updateExprType(x syntax.Expr, typ Type, final bool) {
 		}
 
 	default:
-		panic("unreachable")
+		panic("unreachable15")
 	}
 
 	// If the new type is not final and still untyped, just
@@ -564,7 +564,7 @@ func (check *Checker) comparison(x, y *operand, op syntax.Operator, switchCase b
 		}
 
 	default:
-		panic("unreachable")
+		panic("unreachable16")
 	}
 
 	// comparison is ok
@@ -783,6 +783,37 @@ func init() {
 		syntax.AndAnd: allBoolean,
 		syntax.OrOr:   allBoolean,
 	}
+}
+
+func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
+	var t, e operand
+	check.expr(nil, &t, tern.Else)
+	check.expr(nil, &e, tern.Then)
+	if t.mode == invalid || e.mode == invalid {
+		return
+	}
+
+	var c operand
+	check.expr(nil, &c, tern.Cond)
+	if c.mode == invalid {
+		return
+	}
+	if !isBoolean(c.typ) {
+		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be boolean")
+	}
+
+	if !Identical(t.typ, e.typ) {
+		check.errorf(x, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical: %q and %q", t.typ, e.typ)
+	}
+
+	x.typ = t.typ
+	x.mode = value
+
+	tern.BuildRepr(&syntax.Name{Value: t.typ.String()})
+
+	var k operand
+	// Needed to register all the expression types to context
+	check.expr(nil, &k, tern.Repr())
 }
 
 // If e != nil, it must be the binary expression; it may be nil for non-constant expressions
@@ -1026,7 +1057,7 @@ func (check *Checker) nonGeneric(T *target, x *operand) {
 // exprInternal contains the core of type checking of expressions.
 // Must only be called by rawExpr.
 // (See rawExpr for an explanation of the parameters.)
-func (check *Checker) exprInternal(T *target, x *operand, e syntax.Expr, hint Type) exprKind {
+func (check *Checker) exprInternal(Target *target, x *operand, e syntax.Expr, hint Type) exprKind {
 	// make sure x has a valid state in case of bailout
 	// (was go.dev/issue/5770)
 	x.mode = invalid
@@ -1034,7 +1065,7 @@ func (check *Checker) exprInternal(T *target, x *operand, e syntax.Expr, hint Ty
 
 	switch e := e.(type) {
 	case nil:
-		panic("unreachable")
+		panic("unreachable13")
 
 	case *syntax.BadExpr:
 		goto Error // error was reported before
@@ -1080,14 +1111,15 @@ func (check *Checker) exprInternal(T *target, x *operand, e syntax.Expr, hint Ty
 	case *syntax.IndexExpr:
 		if check.indexExpr(x, e) {
 			if !enableReverseTypeInference {
-				T = nil
+				Target = nil
 			}
-			check.funcInst(T, e.Pos(), x, e, true)
+			check.funcInst(Target, e.Pos(), x, e, true)
 		}
 		if x.mode == invalid {
 			goto Error
 		}
-
+	case *syntax.TernaryExpr:
+		check.ternary(x, e)
 	case *syntax.SliceExpr:
 		check.sliceExpr(x, e)
 		if x.mode == invalid {
@@ -1384,7 +1416,7 @@ func (check *Checker) exclude(x *operand, modeset uint) {
 			msg = "%s is not an expression"
 			code = NotAnExpr
 		default:
-			panic("unreachable")
+			panic("unreachable4")
 		}
 		check.errorf(x, code, msg, x)
 		x.mode = invalid

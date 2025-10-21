@@ -1324,8 +1324,8 @@ func (r *rewriter) ifNext(op syntax.Operator, c int, zeroNext bool, thens ...syn
 		}
 		thenList = append(thenList, clr)
 	}
-	for _, then := range thens {
-		thenList = append(thenList, then)
+	for _, thenBlock := range thens {
+		thenList = append(thenList, thenBlock)
 	}
 	nif := &syntax.IfStmt{
 		Cond: r.cond(op, r.next(), r.intConst(c)),
@@ -1347,12 +1347,12 @@ func setValueType(x syntax.Expr, typ syntax.Type) {
 //
 //	if #tmpState != abi.RF_READY { runtime.panicrangestate(#tmpState) }
 func (r *rewriter) assertReady(start syntax.Pos, tmpState *types2.Var) syntax.Stmt {
-
 	nif := &syntax.IfStmt{
 		Cond: r.cond(syntax.Neq, r.useObj(tmpState), r.stateConst(abi.RF_READY)),
 		Then: &syntax.BlockStmt{
 			List: []syntax.Stmt{
-				r.callPanic(start, r.useObj(tmpState))},
+				r.callPanic(start, r.useObj(tmpState)),
+			},
 		},
 	}
 	setPos(nif, start)

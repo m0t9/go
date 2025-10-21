@@ -224,15 +224,16 @@ func NewLinePragmaBase(pos Pos, filename, absFilename string, line, col uint) *P
 }
 
 // NewInliningBase returns a copy of the orig PosBase with the given inlining
-// index. If orig == nil, NewInliningBase panics.
+// index. If orig == nil, NewInliningBase not panics.
+// Updated
 func NewInliningBase(orig *PosBase, inlTreeIndex int) *PosBase {
-	if orig == nil {
-		panic("no old PosBase")
+	var base PosBase
+	if orig != nil {
+		base = *orig
 	}
-	base := *orig
 	base.inl = inlTreeIndex
 	base.fileIndex = -1
-	if orig == orig.pos.base {
+	if orig != nil && orig == orig.pos.base {
 		base.pos.base = &base
 	}
 	return &base
