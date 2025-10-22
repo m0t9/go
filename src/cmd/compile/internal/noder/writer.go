@@ -529,7 +529,7 @@ func (pw *pkgWriter) typIdx(typ types2.Type, dict *writerDict) typeInfo {
 	case *types2.Basic:
 		switch kind := typ.Kind(); {
 		case kind == types2.Invalid:
-			base.Fatalf("unexpected types2.Invalid")
+			base.Fatalf("unexpected types2.Invalid: %v", typ)
 
 		case types2.Typ[kind] == typ:
 			w.Code(pkgbits.TypeBasic)
