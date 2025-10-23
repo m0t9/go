@@ -809,8 +809,14 @@ func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 		check.errorf(&t, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical: %q and %q", t.typ, e.typ)
 	}
 
-	tt, _ := strings.CutPrefix(t.typ.String(), "main.")
-	tern.BuildRepr(&syntax.Name{Value: tt})
+	if c.mode == constant_ {
+		// We can immediately generate only one branch
+		tern.Instant(constant.BoolVal(c.val))
+	} else {
+		// Otherwise generate honest if
+		tt, _ := strings.CutPrefix(t.typ.String(), "main.")
+		tern.Branching(&syntax.Name{Value: tt})
+	}
 
 	var k operand
 	// Needed to register all the expression types to context

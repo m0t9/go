@@ -499,7 +499,15 @@ func (expr *TernaryExpr) Repr() Expr {
 	return expr.repr
 }
 
-func (expr *TernaryExpr) BuildRepr(retType Expr) {
+func (expr *TernaryExpr) Instant(satisfied bool) {
+	if satisfied {
+		expr.repr = expr.Then
+	} else {
+		expr.repr = expr.Else
+	}
+}
+
+func (expr *TernaryExpr) Branching(retType Expr) {
 	expr.repr = &CallExpr{
 		Fun: &FuncLit{
 			Type: &FuncType{
