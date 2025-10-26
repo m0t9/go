@@ -12,7 +12,6 @@ import (
 	"go/constant"
 	"go/token"
 	. "internal/types/errors"
-	"strings"
 )
 
 /*
@@ -788,44 +787,26 @@ func init() {
 
 func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 	var t, e operand
-	check.expr(nil, &t, tern.Then)
-	check.expr(nil, &e, tern.Else)
-	if t.mode == invalid || e.mode == invalid {
-		return
-	}
-	t.typ, e.typ = Default(t.typ), Default(e.typ)
+	check.expr(nil, &t, tern.Else)
+	check.expr(nil, &e, tern.Then)
 
 	var c operand
 	check.expr(nil, &c, tern.Cond)
-	if c.mode == invalid {
+	if c.mode == invalid || t.mode == invalid || e.mode == invalid {
 		return
 	}
-	c.typ = Default(c.typ)
+
+	t.typ, e.typ, c.typ = Default(t.typ), Default(e.typ), Default(c.typ)
 	if !isBoolean(c.typ) {
 		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be boolean")
 	}
 
 	if !Identical(t.typ, e.typ) {
-		check.errorf(&t, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical: %q and %q", t.typ, e.typ)
+		check.errorf(x, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical: %q and %q", t.typ, e.typ)
 	}
 
-	if c.mode == constant_ {
-		// We can immediately generate only one branch
-		tern.Instant(constant.BoolVal(c.val))
-	} else {
-		// Otherwise generate honest if
-		tt, _ := strings.CutPrefix(t.typ.String(), "main.")
-		tern.Branching(&syntax.Name{Value: tt})
-	}
-
-	var k operand
-	// Needed to register all the expression types to context
-	check.expr(nil, &k, tern.Repr())
-
-	x.typ = Default(k.typ)
+	x.typ = t.typ
 	x.mode = value
-	x.expr = tern
-	x.id = k.id
 }
 
 // If e != nil, it must be the binary expression; it may be nil for non-constant expressions

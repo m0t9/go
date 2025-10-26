@@ -1199,6 +1199,8 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 		ir.EditChildren(n, o.edit)
 		return n
 
+	case ir.OTERNARY:
+		panic("Didn't implement ternary in walk/order.go")
 	// Addition of strings turns into a function call.
 	// Allocate a temporary to hold the strings.
 	// Fewer than 5 strings use direct runtime helpers.

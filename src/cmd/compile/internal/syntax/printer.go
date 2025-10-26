@@ -437,9 +437,6 @@ func (p *printer) printRawNode(n Node) {
 		}
 		p.print(_Rparen)
 
-	case *TernaryExpr:
-		p.printRawNode(n.Repr())
-
 	case *Operation:
 		if n.Y == nil {
 			// unary expr

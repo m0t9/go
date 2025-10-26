@@ -2170,6 +2170,9 @@ func (r *reader) expr() (res ir.Node) {
 	case exprFuncLit:
 		return r.funcLit()
 
+	case exprTernary:
+		return r.ternary()
+
 	case exprFieldVal:
 		x := r.expr()
 		pos := r.pos()
@@ -3064,6 +3067,21 @@ func (r *reader) compLit() ir.Node {
 		lit.SetType(typ0)
 	}
 	return lit
+}
+
+func (r *reader) ternary() ir.Node {
+	condNode := r.expr()
+	thenNode := r.expr()
+	elseNode := r.expr()
+
+	ternary := &ir.TernaryExpr{
+		Cond: condNode,
+		Then: thenNode,
+		Else: elseNode,
+	}
+
+	setType(ternary, thenNode.Type())
+	return ternary
 }
 
 func (r *reader) funcLit() ir.Node {

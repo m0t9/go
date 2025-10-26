@@ -529,7 +529,7 @@ func (pw *pkgWriter) typIdx(typ types2.Type, dict *writerDict) typeInfo {
 	case *types2.Basic:
 		switch kind := typ.Kind(); {
 		case kind == types2.Invalid:
-			base.Fatalf("unexpected types2.Invalid: %v", typ)
+			base.Fatalf("unexpected types2.Invalid")
 
 		case types2.Typ[kind] == typ:
 			w.Code(pkgbits.TypeBasic)
@@ -1884,7 +1884,8 @@ func (w *writer) expr(expr syntax.Expr) {
 		w.funcLit(expr)
 
 	case *syntax.TernaryExpr:
-		w.expr(expr.Repr())
+		w.Code(exprTernary)
+		w.ternary(expr)
 
 	case *syntax.SelectorExpr:
 		sel, ok := w.p.info.Selections[expr]
@@ -2385,6 +2386,12 @@ func (w *writer) compLit(lit *syntax.CompositeLit) {
 		}
 		w.implicitConvExpr(elemType, elem)
 	}
+}
+
+func (w *writer) ternary(expr *syntax.TernaryExpr) {
+	w.expr(expr.Cond)
+	w.expr(expr.Then)
+	w.expr(expr.Else)
 }
 
 func (w *writer) funcLit(expr *syntax.FuncLit) {
