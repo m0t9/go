@@ -3074,12 +3074,7 @@ func (r *reader) ternary() ir.Node {
 	thenNode := r.expr()
 	elseNode := r.expr()
 
-	ternary := &ir.TernaryExpr{
-		Cond: condNode,
-		Then: thenNode,
-		Else: elseNode,
-	}
-
+	ternary := ir.NewTernaryExpr(condNode.Pos(), thenNode.Type(), condNode, thenNode, elseNode)
 	setType(ternary, thenNode.Type())
 	return ternary
 }

@@ -225,6 +225,7 @@ type TernaryExpr struct {
 
 func NewTernaryExpr(pos src.XPos, typ *types.Type, c, t, e Node) *TernaryExpr {
 	n := &TernaryExpr{}
+	n.op = OTERNARY
 	n.pos = pos
 	n.typ = typ
 	n.Cond = c

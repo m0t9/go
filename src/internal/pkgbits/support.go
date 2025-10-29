@@ -4,11 +4,14 @@
 
 package pkgbits
 
-import "fmt"
+import (
+	"fmt"
+	"runtime/debug"
+)
 
 func assert(b bool) {
 	if !b {
-		panic("assertion failed")
+		panic(fmt.Sprintf("assertion failed: %s", debug.Stack()))
 	}
 }
 

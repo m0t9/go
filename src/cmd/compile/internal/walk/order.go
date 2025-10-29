@@ -1200,7 +1200,33 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 		return n
 
 	case ir.OTERNARY:
-		panic("Didn't implement ternary in walk/order.go")
+		n := n.(*ir.TernaryExpr)
+		n.Cond = typecheck.DefaultLit(n.Cond, types.Types[types.TBOOL])
+
+		ft := types.NewSignature(nil, nil, []*types.Field{types.NewField(src.NoXPos, nil, n.Then.Type())})
+		f := ir.NewClosureFunc(n.Pos(), n.Pos(), ir.OCLOSURE, ft, ir.CurFunc, typecheck.Target)
+		f.Body = []ir.Node{
+			ir.NewIfStmt(n.Pos(), n.Cond,
+				[]ir.Node{ir.NewReturnStmt(n.Then.Pos(), []ir.Node{n.Then})},
+				[]ir.Node{ir.NewReturnStmt(n.Else.Pos(), []ir.Node{n.Else})},
+			),
+		}
+		f.DeclareParams(true)
+
+		var edit func(ir.Node) ir.Node
+		edit = func(un ir.Node) ir.Node {
+			n, ok := un.(*ir.Name)
+			if !ok {
+				ir.EditChildren(un, edit)
+				return un
+			}
+
+			return ir.NewClosureVar(n.Pos(), f, n)
+		}
+		edit(f.Body[0])
+
+		ce := typecheck.Call(n.Pos(), f.OClosure, nil, false).(*ir.CallExpr)
+		return ce
 	// Addition of strings turns into a function call.
 	// Allocate a temporary to hold the strings.
 	// Fewer than 5 strings use direct runtime helpers.
