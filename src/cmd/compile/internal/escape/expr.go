@@ -37,7 +37,11 @@ func (e *escape) exprSkipInit(k hole, n ir.Node) {
 	switch n.Op() {
 	default:
 		base.Fatalf("unexpected expr: %s %v", n.Op().String(), n)
-
+	case ir.OTERNARY:
+		n := n.(*ir.TernaryExpr)
+		e.discard(n.Cond)
+		e.expr(k, n.Then)
+		e.expr(k, n.Else)
 	case ir.OLITERAL, ir.ONIL, ir.OGETG, ir.OGETCALLERSP, ir.OTYPE, ir.OMETHEXPR, ir.OLINKSYMOFFSET:
 		// nop
 

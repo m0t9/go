@@ -734,6 +734,9 @@ func exprFmt(n Node, s fmt.State, prec int) {
 		n := n.(*UnaryExpr)
 		fmt.Fprintf(s, "%v(%v)", n.Op(), n.X)
 
+	case OTERNARY:
+		break
+
 	case OAPPEND,
 		ODELETE,
 		OMAKE,

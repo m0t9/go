@@ -218,7 +218,7 @@ func typecheck1(n ir.Node, top int) ir.Node {
 	switch n.Op() {
 	default:
 		ir.Dump("typecheck", n)
-		base.Fatalf("typecheck %v", n.Op())
+		base.Fatalf("typecheck zv %v", n.Op())
 		panic("unreachable")
 
 	case ir.ONAME:

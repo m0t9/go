@@ -12,8 +12,10 @@ import (
 	"strings"
 )
 
-const debug = false
-const trace = false
+const (
+	debug = false
+	trace = false
+)
 
 type parser struct {
 	file  *PosBase
@@ -861,6 +863,35 @@ func (p *parser) expr() Expr {
 	return p.binaryExpr(nil, 0)
 }
 
+func (p *parser) ternaryExpr() Expr {
+	if trace {
+		defer p.trace("ternaryExpr")()
+	}
+
+	p.next()
+	condExpr := p.expr()
+
+	if p.tok != _Then {
+		p.syntaxError("expected then in ternary operator after condition")
+	}
+	p.next()
+
+	thenExpr := p.expr()
+	if p.tok != _Else {
+		p.syntaxError("expected else in ternary operator after then-expression")
+	}
+	p.next()
+
+	elseExpr := p.expr()
+
+	ternary := new(TernaryExpr)
+	ternary.Cond = condExpr
+	ternary.Then = thenExpr
+	ternary.Else = elseExpr
+
+	return ternary
+}
+
 // Expression = UnaryExpr | Expression binary_op Expression .
 func (p *parser) binaryExpr(x Expr, prec int) Expr {
 	// don't trace binaryExpr - only leads to overly nested trace output
@@ -888,6 +919,8 @@ func (p *parser) unaryExpr() Expr {
 	}
 
 	switch p.tok {
+	case _If:
+		return p.ternaryExpr()
 	case _Operator, _Star:
 		switch p.op {
 		case Mul, Add, Sub, Not, Xor, Tilde:

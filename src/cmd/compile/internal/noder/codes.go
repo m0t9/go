@@ -46,6 +46,7 @@ const (
 	exprFieldVal
 	exprMethodVal
 	exprMethodExpr
+	exprTernary
 	exprIndex
 	exprSlice
 	exprAssert

@@ -2212,6 +2212,67 @@ func (n *TailCallStmt) editChildrenWithHidden(edit func(Node) Node) {
 	}
 }
 
+func (n *TernaryExpr) Format(s fmt.State, verb rune) { fmtNode(n, s, verb) }
+func (n *TernaryExpr) copy() Node {
+	c := *n
+	c.init = copyNodes(c.init)
+	return &c
+}
+func (n *TernaryExpr) doChildren(do func(Node) bool) bool {
+	if doNodes(n.init, do) {
+		return true
+	}
+	if n.Cond != nil && do(n.Cond) {
+		return true
+	}
+	if n.Then != nil && do(n.Then) {
+		return true
+	}
+	if n.Else != nil && do(n.Else) {
+		return true
+	}
+	return false
+}
+func (n *TernaryExpr) doChildrenWithHidden(do func(Node) bool) bool {
+	if doNodes(n.init, do) {
+		return true
+	}
+	if n.Cond != nil && do(n.Cond) {
+		return true
+	}
+	if n.Then != nil && do(n.Then) {
+		return true
+	}
+	if n.Else != nil && do(n.Else) {
+		return true
+	}
+	return false
+}
+func (n *TernaryExpr) editChildren(edit func(Node) Node) {
+	editNodes(n.init, edit)
+	if n.Cond != nil {
+		n.Cond = edit(n.Cond).(Node)
+	}
+	if n.Then != nil {
+		n.Then = edit(n.Then).(Node)
+	}
+	if n.Else != nil {
+		n.Else = edit(n.Else).(Node)
+	}
+}
+func (n *TernaryExpr) editChildrenWithHidden(edit func(Node) Node) {
+	editNodes(n.init, edit)
+	if n.Cond != nil {
+		n.Cond = edit(n.Cond).(Node)
+	}
+	if n.Then != nil {
+		n.Then = edit(n.Then).(Node)
+	}
+	if n.Else != nil {
+		n.Else = edit(n.Else).(Node)
+	}
+}
+
 func (n *TypeAssertExpr) Format(s fmt.State, verb rune) { fmtNode(n, s, verb) }
 func (n *TypeAssertExpr) copy() Node {
 	c := *n

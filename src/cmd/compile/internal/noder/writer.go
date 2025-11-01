@@ -5,6 +5,11 @@
 package noder
 
 import (
+	"cmd/compile/internal/base"
+	"cmd/compile/internal/ir"
+	"cmd/compile/internal/syntax"
+	"cmd/compile/internal/types"
+	"cmd/compile/internal/types2"
 	"fmt"
 	"go/constant"
 	"go/token"
@@ -13,12 +18,6 @@ import (
 	"internal/pkgbits"
 	"os"
 	"strings"
-
-	"cmd/compile/internal/base"
-	"cmd/compile/internal/ir"
-	"cmd/compile/internal/syntax"
-	"cmd/compile/internal/types"
-	"cmd/compile/internal/types2"
 )
 
 // This file implements the Unified IR package writer and defines the
@@ -1264,7 +1263,7 @@ func (w *writer) stmt(stmt syntax.Stmt) {
 func (w *writer) stmts(stmts []syntax.Stmt) {
 	dead := false
 	w.Sync(pkgbits.SyncStmts)
-	var lastLabel = -1
+	lastLabel := -1
 	for i, stmt := range stmts {
 		if _, ok := stmt.(*syntax.LabeledStmt); ok {
 			lastLabel = i
@@ -1884,6 +1883,10 @@ func (w *writer) expr(expr syntax.Expr) {
 		w.Code(exprFuncLit)
 		w.funcLit(expr)
 
+	case *syntax.TernaryExpr:
+		w.Code(exprTernary)
+		w.ternary(expr)
+
 	case *syntax.SelectorExpr:
 		sel, ok := w.p.info.Selections[expr]
 		assert(ok)
@@ -2383,6 +2386,12 @@ func (w *writer) compLit(lit *syntax.CompositeLit) {
 		}
 		w.implicitConvExpr(elemType, elem)
 	}
+}
+
+func (w *writer) ternary(expr *syntax.TernaryExpr) {
+	w.expr(expr.Cond)
+	w.expr(expr.Then)
+	w.expr(expr.Else)
 }
 
 func (w *writer) funcLit(expr *syntax.FuncLit) {

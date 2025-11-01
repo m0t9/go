@@ -9,6 +9,7 @@ import (
 	"go/constant"
 	"internal/abi"
 	"internal/buildcfg"
+	"runtime/debug"
 	"strings"
 
 	"cmd/compile/internal/base"
@@ -84,7 +85,7 @@ func walkExpr1(n ir.Node, init *ir.Nodes) ir.Node {
 	switch n.Op() {
 	default:
 		ir.Dump("walk", n)
-		base.Fatalf("walkExpr: switch 1 unknown op %+v", n.Op())
+		base.Fatalf("walkExpr: switch 1 unknown op %+v,%s", n.Op(), debug.Stack())
 		panic("unreachable")
 
 	case ir.OGETG, ir.OGETCALLERSP:

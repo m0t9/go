@@ -218,6 +218,22 @@ func (n *CallExpr) SetOp(op Op) {
 	}
 }
 
+type TernaryExpr struct {
+	miniExpr
+	Cond, Then, Else Node
+}
+
+func NewTernaryExpr(pos src.XPos, typ *types.Type, c, t, e Node) *TernaryExpr {
+	n := &TernaryExpr{}
+	n.op = OTERNARY
+	n.pos = pos
+	n.typ = typ
+	n.Cond = c
+	n.Then = t
+	n.Else = e
+	return n
+}
+
 // A ClosureExpr is a function literal expression.
 type ClosureExpr struct {
 	miniExpr

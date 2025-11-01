@@ -5,14 +5,6 @@
 package noder
 
 import (
-	"encoding/hex"
-	"fmt"
-	"go/constant"
-	"internal/buildcfg"
-	"internal/pkgbits"
-	"path/filepath"
-	"strings"
-
 	"cmd/compile/internal/base"
 	"cmd/compile/internal/dwarfgen"
 	"cmd/compile/internal/inline"
@@ -27,6 +19,13 @@ import (
 	"cmd/internal/obj"
 	"cmd/internal/objabi"
 	"cmd/internal/src"
+	"encoding/hex"
+	"fmt"
+	"go/constant"
+	"internal/buildcfg"
+	"internal/pkgbits"
+	"path/filepath"
+	"strings"
 )
 
 // This file implements cmd/compile backend's reader for the Unified
@@ -1907,9 +1906,9 @@ func (r *reader) ifStmt() ir.Node {
 	init := r.stmts()
 	cond := r.expr()
 	staticCond := r.Int()
-	var then, els []ir.Node
+	var thenNode, els []ir.Node
 	if staticCond >= 0 {
-		then = r.blockStmt()
+		thenNode = r.blockStmt()
 	} else {
 		r.lastCloseScopePos = r.pos()
 	}
@@ -1926,12 +1925,12 @@ func (r *reader) ifStmt() ir.Node {
 		if cond.Op() != ir.OLITERAL {
 			init.Append(typecheck.Stmt(ir.NewAssignStmt(pos, ir.BlankNode, cond))) // for side effects
 		}
-		init.Append(then...)
+		init.Append(thenNode...)
 		init.Append(els...)
 		return block(init)
 	}
 
-	n := ir.NewIfStmt(pos, cond, then, els)
+	n := ir.NewIfStmt(pos, cond, thenNode, els)
 	n.SetInit(init)
 	return n
 }
@@ -2170,6 +2169,9 @@ func (r *reader) expr() (res ir.Node) {
 
 	case exprFuncLit:
 		return r.funcLit()
+
+	case exprTernary:
+		return r.ternary()
 
 	case exprFieldVal:
 		x := r.expr()
@@ -3067,6 +3069,16 @@ func (r *reader) compLit() ir.Node {
 	return lit
 }
 
+func (r *reader) ternary() ir.Node {
+	condNode := r.expr()
+	thenNode := r.expr()
+	elseNode := r.expr()
+
+	ternary := ir.NewTernaryExpr(condNode.Pos(), thenNode.Type(), condNode, thenNode, elseNode)
+	setType(ternary, thenNode.Type())
+	return ternary
+}
+
 func (r *reader) funcLit() ir.Node {
 	r.Sync(pkgbits.SyncFuncLit)
 
@@ -3900,8 +3912,8 @@ func methodWrapper(derefs int, tbase *types.Type, method *types.Field, target *i
 	// nicer panic message.
 	if wrapper.IsPtr() && types.Identical(wrapper.Elem(), wrappee) {
 		cond := ir.NewBinaryExpr(pos, ir.OEQ, recv, types.BuiltinPkg.Lookup("nil").Def.(ir.Node))
-		then := []ir.Node{ir.NewCallExpr(pos, ir.OCALL, typecheck.LookupRuntime("panicwrap"), nil)}
-		fn.Body.Append(ir.NewIfStmt(pos, cond, then, nil))
+		thenNode := []ir.Node{ir.NewCallExpr(pos, ir.OCALL, typecheck.LookupRuntime("panicwrap"), nil)}
+		fn.Body.Append(ir.NewIfStmt(pos, cond, thenNode, nil))
 	}
 
 	// typecheck will add one implicit deref, if necessary,
