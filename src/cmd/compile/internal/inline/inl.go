@@ -603,7 +603,6 @@ opSwitch:
 			v.budget++
 		}
 		v.budget -= inlineExtraPanicCost
-
 	case ir.ORECOVER:
 		base.FatalfAt(n.Pos(), "ORECOVER missed typecheck")
 	case ir.ORECOVERFP:

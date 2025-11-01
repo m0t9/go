@@ -1201,8 +1201,18 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 
 	case ir.OTERNARY:
 		n := n.(*ir.TernaryExpr)
-		n.Cond = typecheck.DefaultLit(n.Cond, types.Types[types.TBOOL])
 
+		// ... = if cond then a else b
+		//
+		// ... = func() typeOf(a) {
+		// 		if cond {
+		// 			return a
+		// 		} else {
+		// 			return b
+		// 		}
+		// }()
+
+		n.Cond = typecheck.DefaultLit(n.Cond, types.Types[types.TBOOL])
 		ft := types.NewSignature(nil, nil, []*types.Field{types.NewField(src.NoXPos, nil, n.Then.Type())})
 		f := ir.NewClosureFunc(n.Pos(), n.Pos(), ir.OCLOSURE, ft, ir.CurFunc, typecheck.Target)
 		f.Body = []ir.Node{
@@ -1211,8 +1221,10 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 				[]ir.Node{ir.NewReturnStmt(n.Else.Pos(), []ir.Node{n.Else})},
 			),
 		}
+
 		f.DeclareParams(true)
 
+		// In closure we need to refer to closure variables copies
 		var edit func(ir.Node) ir.Node
 		edit = func(un ir.Node) ir.Node {
 			n, ok := un.(*ir.Name)
@@ -1221,12 +1233,15 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 				return un
 			}
 
+			// Not so honest, because if closure will participate in expression
+			// we can rewrite variable declared in it.
+			// But miltiline ternary is not available, so it is not possible yet.
 			return ir.NewClosureVar(n.Pos(), f, n)
 		}
-		edit(f.Body[0])
+		f.Body[0] = edit(f.Body[0])
 
-		ce := typecheck.Call(n.Pos(), f.OClosure, nil, false).(*ir.CallExpr)
-		return ce
+		return typecheck.Call(n.Pos(), f.OClosure, nil, false).(*ir.CallExpr)
+
 	// Addition of strings turns into a function call.
 	// Allocate a temporary to hold the strings.
 	// Fewer than 5 strings use direct runtime helpers.

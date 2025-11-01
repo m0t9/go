@@ -786,12 +786,11 @@ func init() {
 }
 
 func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
-	var t, e operand
+	var c, t, e operand
+	check.expr(nil, &c, tern.Cond)
 	check.expr(nil, &t, tern.Else)
 	check.expr(nil, &e, tern.Then)
 
-	var c operand
-	check.expr(nil, &c, tern.Cond)
 	if c.mode == invalid || t.mode == invalid || e.mode == invalid {
 		return
 	}
@@ -802,8 +801,12 @@ func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 	}
 
 	if !Identical(t.typ, e.typ) {
-		check.errorf(x, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical: %q and %q", t.typ, e.typ)
+		check.errorf(x, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical, got: %q and %q", t.typ, e.typ)
 	}
+
+	check.updateExprType(tern.Cond, c.typ, true)
+	check.updateExprType(tern.Then, t.typ, true)
+	check.updateExprType(tern.Else, e.typ, true)
 
 	x.typ = t.typ
 	x.mode = value
