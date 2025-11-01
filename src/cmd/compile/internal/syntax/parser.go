@@ -860,10 +860,6 @@ func (p *parser) expr() Expr {
 		defer p.trace("expr")()
 	}
 
-	if p.tok == _If {
-		return p.ternaryExpr()
-	}
-
 	return p.binaryExpr(nil, 0)
 }
 
@@ -923,6 +919,8 @@ func (p *parser) unaryExpr() Expr {
 	}
 
 	switch p.tok {
+	case _If:
+		return p.ternaryExpr()
 	case _Operator, _Star:
 		switch p.op {
 		case Mul, Add, Sub, Not, Xor, Tilde:
