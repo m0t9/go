@@ -868,21 +868,35 @@ func (p *parser) ternaryExpr() Expr {
 		defer p.trace("ternaryExpr")()
 	}
 
-	p.next()
-	condExpr := p.expr()
-
-	if p.tok != _Then {
-		p.syntaxError("expected then in ternary operator after condition")
+	init, condExpr, _ := p.header(_If)
+	if init != nil {
+		p.syntaxError("ternary expression does not support variable initialization")
 	}
-	p.next()
+
+	p.next() // {
 
 	thenExpr := p.expr()
-	if p.tok != _Else {
-		p.syntaxError("expected else in ternary operator after then-expression")
+
+	if p.tok != _Rbrace {
+		p.syntaxError(fmt.Sprintf("unexpected %s, expected }", p.tok))
 	}
 	p.next()
 
+	if p.tok != _Else {
+		p.syntaxError(fmt.Sprintf("unexpected %s, expected else", p.tok))
+	}
+	p.next()
+
+	if p.tok != _Lbrace {
+		p.syntaxError(fmt.Sprintf("unexpected %s, expected {", p.tok))
+	}
+	p.next()
 	elseExpr := p.expr()
+
+	if p.tok != _Rbrace {
+		p.syntaxError(fmt.Sprintf("unexpected %s, expected }", p.tok))
+	}
+	p.next()
 
 	ternary := new(TernaryExpr)
 	ternary.Cond = condExpr
