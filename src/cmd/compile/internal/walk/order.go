@@ -1204,43 +1204,25 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 
 		// ... = if cond then a else b
 		//
-		// ... = func() typeOf(a) {
-		// 		if cond {
-		// 			return a
-		// 		} else {
-		// 			return b
-		// 		}
-		// }()
+		// var r typeOf(a)
+		// if cond {
+		// 	    r = a
+		// } else {
+		// 		r = b
+		// }
 
-		n.Cond = typecheck.DefaultLit(n.Cond, types.Types[types.TBOOL])
-		ft := types.NewSignature(nil, nil, []*types.Field{types.NewField(src.NoXPos, nil, n.Then.Type())})
-		f := ir.NewClosureFunc(n.Pos(), n.Pos(), ir.OCLOSURE, ft, ir.CurFunc, typecheck.Target)
-		f.Body = []ir.Node{
-			ir.NewIfStmt(n.Pos(), n.Cond,
-				[]ir.Node{ir.NewReturnStmt(n.Then.Pos(), []ir.Node{n.Then})},
-				[]ir.Node{ir.NewReturnStmt(n.Else.Pos(), []ir.Node{n.Else})},
-			),
-		}
+		r := o.newTemp(n.Then.Type(), false)
+		cond := o.expr(n.Cond, nil)
 
-		f.DeclareParams(true)
+		ifstmt := ir.NewIfStmt(
+			base.Pos,
+			cond,
+			[]ir.Node{ir.NewAssignStmt(base.Pos, r, n.Then)},
+			[]ir.Node{ir.NewAssignStmt(base.Pos, r, n.Else)},
+		)
+		o.append(ifstmt)
 
-		// In closure we need to refer to closure variables copies
-		var edit func(ir.Node) ir.Node
-		edit = func(un ir.Node) ir.Node {
-			n, ok := un.(*ir.Name)
-			if !ok {
-				ir.EditChildren(un, edit)
-				return un
-			}
-
-			// Not so honest, because if closure will participate in expression
-			// we can rewrite variable declared in it.
-			// But miltiline ternary is not available, so it is not possible yet.
-			return ir.NewClosureVar(n.Pos(), f, n)
-		}
-		f.Body[0] = edit(f.Body[0])
-
-		return typecheck.Call(n.Pos(), f.OClosure, nil, false).(*ir.CallExpr)
+		return r
 
 	// Addition of strings turns into a function call.
 	// Allocate a temporary to hold the strings.
