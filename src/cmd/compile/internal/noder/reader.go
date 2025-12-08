@@ -1906,9 +1906,9 @@ func (r *reader) ifStmt() ir.Node {
 	init := r.stmts()
 	cond := r.expr()
 	staticCond := r.Int()
-	var thenNode, els []ir.Node
+	var then, els []ir.Node
 	if staticCond >= 0 {
-		thenNode = r.blockStmt()
+		then = r.blockStmt()
 	} else {
 		r.lastCloseScopePos = r.pos()
 	}
@@ -1925,12 +1925,12 @@ func (r *reader) ifStmt() ir.Node {
 		if cond.Op() != ir.OLITERAL {
 			init.Append(typecheck.Stmt(ir.NewAssignStmt(pos, ir.BlankNode, cond))) // for side effects
 		}
-		init.Append(thenNode...)
+		init.Append(then...)
 		init.Append(els...)
 		return block(init)
 	}
 
-	n := ir.NewIfStmt(pos, cond, thenNode, els)
+	n := ir.NewIfStmt(pos, cond, then, els)
 	n.SetInit(init)
 	return n
 }
@@ -3912,8 +3912,8 @@ func methodWrapper(derefs int, tbase *types.Type, method *types.Field, target *i
 	// nicer panic message.
 	if wrapper.IsPtr() && types.Identical(wrapper.Elem(), wrappee) {
 		cond := ir.NewBinaryExpr(pos, ir.OEQ, recv, types.BuiltinPkg.Lookup("nil").Def.(ir.Node))
-		thenNode := []ir.Node{ir.NewCallExpr(pos, ir.OCALL, typecheck.LookupRuntime("panicwrap"), nil)}
-		fn.Body.Append(ir.NewIfStmt(pos, cond, thenNode, nil))
+		then := []ir.Node{ir.NewCallExpr(pos, ir.OCALL, typecheck.LookupRuntime("panicwrap"), nil)}
+		fn.Body.Append(ir.NewIfStmt(pos, cond, then, nil))
 	}
 
 	// typecheck will add one implicit deref, if necessary,
