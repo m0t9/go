@@ -70,7 +70,7 @@ const (
 type whitespace struct {
 	last token
 	kind ctrlSymbol
-	// text string // comment text (possibly ""); valid if kind == comment
+	//text string // comment text (possibly ""); valid if kind == comment
 }
 
 type printer struct {
@@ -182,7 +182,7 @@ func (p *printer) flush(next token) {
 		// case eolComment:
 		// 	// TODO(gri) act depending on sawNewline
 		default:
-			panic("unreachable8")
+			panic("unreachable")
 		}
 	}
 
@@ -225,7 +225,7 @@ func (p *printer) flush(next token) {
 		// 	}
 		// 	// TODO(gri) should check that line comments are always followed by newline
 		default:
-			panic("unreachable9")
+			panic("unreachable")
 		}
 	}
 
@@ -299,7 +299,7 @@ func (p *printer) print(args ...interface{}) {
 		case ctrlSymbol:
 			switch x {
 			case none, semi /*, comment*/ :
-				panic("unreachable10")
+				panic("unreachable")
 			case newline:
 				// TODO(gri) need to handle mandatory newlines after a //-style comment
 				if !p.linebreaks {
@@ -820,7 +820,7 @@ func groupFor(d Decl) (token, *Group) {
 	case *FuncDecl:
 		return _Func, nil
 	default:
-		panic("unreachable11")
+		panic("unreachable")
 	}
 }
 
@@ -835,7 +835,7 @@ func (p *printer) printDecl(list []Decl) {
 
 	if group == nil {
 		if len(list) != 1 {
-			panic("unreachable12")
+			panic("unreachable")
 		}
 		p.printNode(list[0])
 		return

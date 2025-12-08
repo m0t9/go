@@ -286,7 +286,7 @@ func (check *Checker) updateExprType(x syntax.Expr, typ Type, final bool) {
 		// upon assignment or use.
 		if debug {
 			check.dump("%v: found old type(%s): %s (new: %s)", atPos(x), x, old.typ, typ)
-			panic("unreachable14")
+			panic("unreachable")
 		}
 		return
 
@@ -355,7 +355,7 @@ func (check *Checker) updateExprType(x syntax.Expr, typ Type, final bool) {
 		}
 
 	default:
-		panic("unreachable15")
+		panic("unreachable")
 	}
 
 	// If the new type is not final and still untyped, just
@@ -564,7 +564,7 @@ func (check *Checker) comparison(x, y *operand, op syntax.Operator, switchCase b
 		}
 
 	default:
-		panic("unreachable16")
+		panic("unreachable")
 	}
 
 	// comparison is ok
@@ -1053,7 +1053,7 @@ func (check *Checker) nonGeneric(T *target, x *operand) {
 // exprInternal contains the core of type checking of expressions.
 // Must only be called by rawExpr.
 // (See rawExpr for an explanation of the parameters.)
-func (check *Checker) exprInternal(Target *target, x *operand, e syntax.Expr, hint Type) exprKind {
+func (check *Checker) exprInternal(T *target, x *operand, e syntax.Expr, hint Type) exprKind {
 	// make sure x has a valid state in case of bailout
 	// (was go.dev/issue/5770)
 	x.mode = invalid
@@ -1061,7 +1061,7 @@ func (check *Checker) exprInternal(Target *target, x *operand, e syntax.Expr, hi
 
 	switch e := e.(type) {
 	case nil:
-		panic("unreachable13")
+		panic("unreachable")
 
 	case *syntax.BadExpr:
 		goto Error // error was reported before
@@ -1107,9 +1107,9 @@ func (check *Checker) exprInternal(Target *target, x *operand, e syntax.Expr, hi
 	case *syntax.IndexExpr:
 		if check.indexExpr(x, e) {
 			if !enableReverseTypeInference {
-				Target = nil
+				T = nil
 			}
-			check.funcInst(Target, e.Pos(), x, e, true)
+			check.funcInst(T, e.Pos(), x, e, true)
 		}
 		if x.mode == invalid {
 			goto Error
@@ -1412,7 +1412,7 @@ func (check *Checker) exclude(x *operand, modeset uint) {
 			msg = "%s is not an expression"
 			code = NotAnExpr
 		default:
-			panic("unreachable4")
+			panic("unreachable")
 		}
 		check.errorf(x, code, msg, x)
 		x.mode = invalid
