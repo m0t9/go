@@ -1807,6 +1807,8 @@ func (p *parser) parseUnaryExpr() ast.Expr {
 	}
 
 	switch p.tok {
+	case token.IF:
+		return p.parseTernaryExpr()
 	case token.ADD, token.SUB, token.NOT, token.XOR, token.AND, token.TILDE:
 		pos, op := p.pos, p.tok
 		p.next()
@@ -1868,6 +1870,32 @@ func (p *parser) parseUnaryExpr() ast.Expr {
 	}
 
 	return p.parsePrimaryExpr(nil)
+}
+
+func (p *parser) parseTernaryExpr() ast.Expr {
+	_ = p.expect(token.IF)
+
+	init, cond := p.parseIfHeader()
+	if init != nil {
+		p.error(init.Pos(),
+			"ternary expression does not support variable initialization")
+	}
+
+	p.expect(token.LBRACE)
+	thenExpr := p.parseExpr()
+	p.expect(token.RBRACE)
+
+	p.expect(token.ELSE)
+
+	p.expect(token.LBRACE)
+	elseExpr := p.parseExpr()
+	p.expect(token.RBRACE)
+
+	return &ast.TernaryExpr{
+		Cond: cond,
+		Then: thenExpr,
+		Else: elseExpr,
+	}
 }
 
 func (p *parser) tokPrec() (token.Token, int) {

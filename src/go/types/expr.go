@@ -1150,6 +1150,34 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 			x.expr = e
 			return statement // receive operations may appear in statement context
 		}
+	case *ast.TernaryExpr:
+		var c, then, els operand
+		check.expr(nil, &c, e.Cond)
+		check.expr(nil, &then, e.Else)
+		check.expr(nil, &els, e.Then)
+
+		if c.mode == invalid || then.mode == invalid || els.mode == invalid {
+			goto Error
+		}
+
+		c.typ, then.typ, els.typ = Default(c.typ), Default(then.typ), Default(els.typ)
+		if !isBoolean(c.typ) {
+			check.error(e, MismatchedTypes, "expected boolean in ternary condition")
+			goto Error
+		}
+
+		if !Identical(then.typ, els.typ) {
+			check.error(e, MismatchedTypes,
+				"types of then and else branches of ternary should be identical")
+			goto Error
+		}
+
+		check.updateExprType(e.Cond, c.typ, true)
+		check.updateExprType(e.Then, then.typ, true)
+		check.updateExprType(e.Else, els.typ, true)
+
+		x.typ = then.typ
+		x.mode = value
 
 	case *ast.BinaryExpr:
 		check.binary(x, e, e.X, e.Y, e.Op, e.OpPos)

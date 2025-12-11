@@ -145,6 +145,9 @@ const (
 	SwitchStmt_Body
 	SwitchStmt_Init
 	SwitchStmt_Tag
+	TernaryExpr_Cond
+	TernaryExpr_Else
+	TernaryExpr_Then
 	TypeAssertExpr_Type
 	TypeAssertExpr_X
 	TypeSpec_Comment
@@ -276,6 +279,9 @@ var fieldInfos = [...]fieldInfo{
 	SwitchStmt_Body:       info[*ast.SwitchStmt]("Body"),
 	SwitchStmt_Init:       info[*ast.SwitchStmt]("Init"),
 	SwitchStmt_Tag:        info[*ast.SwitchStmt]("Tag"),
+	TernaryExpr_Cond:      info[*ast.TernaryExpr]("Cond"),
+	TernaryExpr_Else:      info[*ast.TernaryExpr]("Else"),
+	TernaryExpr_Then:      info[*ast.TernaryExpr]("Then"),
 	TypeAssertExpr_Type:   info[*ast.TypeAssertExpr]("Type"),
 	TypeAssertExpr_X:      info[*ast.TypeAssertExpr]("X"),
 	TypeSpec_Comment:      info[*ast.TypeSpec]("Comment"),
