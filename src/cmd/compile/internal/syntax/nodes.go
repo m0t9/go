@@ -216,7 +216,6 @@ type (
 
 	TernaryExpr struct {
 		Cond, Then, Else Expr
-		repr             Expr
 		expr
 	}
 

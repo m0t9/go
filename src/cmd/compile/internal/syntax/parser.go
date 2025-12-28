@@ -902,6 +902,7 @@ func (p *parser) ternaryExpr() Expr {
 	ternary.Cond = condExpr
 	ternary.Then = thenExpr
 	ternary.Else = elseExpr
+	ternary.pos = condExpr.Pos()
 
 	return ternary
 }

@@ -810,6 +810,7 @@ func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 
 	x.typ = t.typ
 	x.mode = value
+	x.expr = tern
 }
 
 // If e != nil, it must be the binary expression; it may be nil for non-constant expressions

@@ -724,6 +724,11 @@ func (p *printer) printRawNode(n Node) {
 			p.printDeclList(n.DeclList)
 		}
 
+	case *TernaryExpr:
+		p.print(_If, n.Cond,
+			_Lbrace, n.Then, _Rbrace,
+			_Else, _Lbrace, n.Else, _Rbrace,
+		)
 	default:
 		panic(fmt.Sprintf("syntax.Iterate: unexpected node type %T", n))
 	}
