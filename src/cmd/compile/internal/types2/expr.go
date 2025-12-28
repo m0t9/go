@@ -797,7 +797,7 @@ func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 
 	t.typ, e.typ, c.typ = Default(t.typ), Default(e.typ), Default(c.typ)
 	if !isBoolean(c.typ) {
-		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be boolean")
+		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be %s", "boolean")
 	}
 
 	if !Identical(t.typ, e.typ) {
