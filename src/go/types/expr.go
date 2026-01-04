@@ -1153,8 +1153,8 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 	case *ast.TernaryExpr:
 		var c, then, els operand
 		check.expr(nil, &c, e.Cond)
-		check.expr(nil, &then, e.Else)
-		check.expr(nil, &els, e.Then)
+		check.expr(nil, &then, e.Then)
+		check.expr(nil, &els, e.Else)
 
 		if c.mode == invalid || then.mode == invalid || els.mode == invalid {
 			goto Error
@@ -1176,8 +1176,24 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 		check.updateExprType(e.Then, then.typ, true)
 		check.updateExprType(e.Else, els.typ, true)
 
-		x.typ = then.typ
-		x.mode = value
+		// Constant ternary expression evaluation is here.
+		if c.mode == constant_ && then.mode == constant_ && els.mode == constant_ {
+			if constant.BoolVal(c.val) {
+				x.typ = then.typ
+				x.mode = then.mode
+				x.expr = e
+				x.val = then.val
+			} else {
+				x.typ = els.typ
+				x.mode = els.mode
+				x.expr = e.Else
+				x.val = els.val
+			}
+		} else {
+			x.typ = then.typ
+			x.mode = value
+			x.expr = e
+		}
 
 	case *ast.BinaryExpr:
 		check.binary(x, e, e.X, e.Y, e.Op, e.OpPos)

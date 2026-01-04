@@ -788,8 +788,8 @@ func init() {
 func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 	var c, t, e operand
 	check.expr(nil, &c, tern.Cond)
-	check.expr(nil, &t, tern.Else)
-	check.expr(nil, &e, tern.Then)
+	check.expr(nil, &t, tern.Then)
+	check.expr(nil, &e, tern.Else)
 
 	if c.mode == invalid || t.mode == invalid || e.mode == invalid {
 		return
@@ -808,9 +808,24 @@ func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 	check.updateExprType(tern.Then, t.typ, true)
 	check.updateExprType(tern.Else, e.typ, true)
 
-	x.typ = t.typ
-	x.mode = value
-	x.expr = tern
+	// Constant ternary expression evaluation is here.
+	if c.mode == constant_ && t.mode == constant_ && e.mode == constant_ {
+		if constant.BoolVal(c.val) {
+			x.typ = t.typ
+			x.mode = t.mode
+			x.expr = tern.Then
+			x.val = t.val
+		} else {
+			x.typ = e.typ
+			x.mode = e.mode
+			x.expr = tern.Else
+			x.val = e.val
+		}
+	} else {
+		x.typ = t.typ
+		x.mode = value
+		x.expr = tern
+	}
 }
 
 // If e != nil, it must be the binary expression; it may be nil for non-constant expressions
