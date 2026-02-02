@@ -785,11 +785,11 @@ func init() {
 	}
 }
 
-func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
+func (check *Checker) ternary(T *target, x *operand, tern *syntax.TernaryExpr) {
 	var c, t, e operand
 	check.expr(nil, &c, tern.Cond)
-	check.expr(nil, &t, tern.Then)
-	check.expr(nil, &e, tern.Else)
+	check.expr(T, &t, tern.Then)
+	check.expr(T, &e, tern.Else)
 
 	if c.mode == invalid || t.mode == invalid || e.mode == invalid {
 		return
@@ -800,8 +800,17 @@ func (check *Checker) ternary(x *operand, tern *syntax.TernaryExpr) {
 		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be %s", "boolean")
 	}
 
-	if !Identical(t.typ, e.typ) {
-		check.errorf(x, MismatchedTypes, "types of then- and else- branches of ternary operator should be identical, got: %q and %q", t.typ, e.typ)
+	check.matchTypes(&t, &e)
+	if t.mode == invalid || e.mode == invalid {
+		check.errorf(&t, MismatchedTypes,
+			"types of then- and else- branches of ternary operator should be identical, got: %q and %q",
+			t.typ, e.typ)
+	}
+
+	if t.isNil() && e.isNil() {
+		check.errorf(&t, UntypedNilUse,
+			"can't derive type for ternary when then- and else- expressions types both nil. got: %q and %q",
+			t.typ, e.typ)
 	}
 
 	check.updateExprType(tern.Cond, c.typ, true)
@@ -1131,7 +1140,7 @@ func (check *Checker) exprInternal(T *target, x *operand, e syntax.Expr, hint Ty
 			goto Error
 		}
 	case *syntax.TernaryExpr:
-		check.ternary(x, e)
+		check.ternary(T, x, e)
 	case *syntax.SliceExpr:
 		check.sliceExpr(x, e)
 		if x.mode == invalid {

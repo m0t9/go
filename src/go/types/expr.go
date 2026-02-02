@@ -1153,8 +1153,8 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 	case *ast.TernaryExpr:
 		var c, then, els operand
 		check.expr(nil, &c, e.Cond)
-		check.expr(nil, &then, e.Then)
-		check.expr(nil, &els, e.Else)
+		check.expr(T, &then, e.Then)
+		check.expr(T, &els, e.Else)
 
 		if c.mode == invalid || then.mode == invalid || els.mode == invalid {
 			goto Error
@@ -1166,9 +1166,16 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 			goto Error
 		}
 
-		if !Identical(then.typ, els.typ) {
+		check.matchTypes(&then, &els)
+		if then.mode == invalid || els.mode == invalid {
 			check.error(e, MismatchedTypes,
-				"types of then and else branches of ternary should be identical")
+				"types of then- and else- branches of ternary operator should be identical")
+			goto Error
+		}
+
+		if then.isNil() && els.isNil() {
+			check.error(e, UntypedNilUse,
+				"can't derive type for ternary when then- and else- expressions types both nil")
 			goto Error
 		}
 

@@ -95,6 +95,18 @@ func weird() {
 	}
 }
 
+type S[T any] struct {
+	a T
+}
+
+func typing() {
+	x := if true { nil } else { []int{} }
+	_ = x
+
+	z := if true { S[int]{} } else { S[int]{} }
+	_ = z
+}
+
 
 func main() {
 	constants()
@@ -102,4 +114,5 @@ func main() {
 	generic("A", "B")
 	logic()
 	weird()
+	typing()
 }
