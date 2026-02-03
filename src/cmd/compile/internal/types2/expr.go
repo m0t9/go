@@ -787,32 +787,45 @@ func init() {
 
 func (check *Checker) ternary(T *target, x *operand, tern *syntax.TernaryExpr) {
 	var c, t, e operand
-	check.expr(nil, &c, tern.Cond)
+
+	// Derive types for all the parts of ternary expression.
+	check.expr(newTarget(Typ[Bool], "ternary's condition"), &c, tern.Cond)
 	check.expr(T, &t, tern.Then)
 	check.expr(T, &e, tern.Else)
 
+	// If at least one derivation failed — return.
 	if c.mode == invalid || t.mode == invalid || e.mode == invalid {
 		return
 	}
 
-	t.typ, e.typ, c.typ = Default(t.typ), Default(e.typ), Default(c.typ)
+	toTyped := func(op *operand) {
+		if isUntyped(op.typ) {
+			op.typ = Default(op.typ)
+		}
+	}
+
+	// Make untyped type default typed one.
+	toTyped(&c)
+	toTyped(&t)
+	toTyped(&e)
+
 	if !isBoolean(c.typ) {
 		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be %s", "boolean")
 	}
 
-	check.matchTypes(&t, &e)
-	if t.mode == invalid || e.mode == invalid {
+	// If at least one of the branches is nil, attempt to match types.
+	if t.isNil() || e.isNil() {
+		check.matchTypes(&t, &e)
+	}
+
+	// If match failed, or types of then- and else- branches different — fail.
+	if t.mode == invalid || e.mode == invalid || !Identical(t.typ, e.typ) {
 		check.errorf(&t, MismatchedTypes,
 			"types of then- and else- branches of ternary operator should be identical, got: %q and %q",
 			t.typ, e.typ)
 	}
 
-	if t.isNil() && e.isNil() {
-		check.errorf(&t, UntypedNilUse,
-			"can't derive type for ternary when then- and else- expressions types both nil. got: %q and %q",
-			t.typ, e.typ)
-	}
-
+	// Set types of the expressions to the context.
 	check.updateExprType(tern.Cond, c.typ, true)
 	check.updateExprType(tern.Then, t.typ, true)
 	check.updateExprType(tern.Else, e.typ, true)
