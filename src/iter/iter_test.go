@@ -98,3 +98,106 @@ func TestValues(t *testing.T) {
 		}
 	}
 }
+
+const dataSize = 1_000_000
+
+var testData []int
+
+func init() {
+	testData = make([]int, dataSize)
+	for i := 0; i < dataSize; i++ {
+		testData[i] = i
+	}
+}
+
+func BenchmarkMap(b *testing.B) {
+	b.Run("Iterator", func(b *testing.B) {
+		seq := Seq2[int, int](slices.All(testData))
+		mapper := func(i, v int) (int, int) { return i, v * 2 }
+
+		for i := 0; i < b.N; i++ {
+			for range Map(mapper, seq) {
+			}
+		}
+	})
+
+	b.Run("ForLoop", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for k, v := range testData {
+				_, _ = k, v*2
+			}
+		}
+	})
+}
+
+func BenchmarkFilter(b *testing.B) {
+	b.Run("Iterator", func(b *testing.B) {
+		seq := Seq2[int, int](slices.All(testData))
+		predicate := func(i, v int) bool { return v%2 == 0 }
+
+		for i := 0; i < b.N; i++ {
+			for range Filter(predicate, seq) {
+			}
+		}
+	})
+
+	b.Run("ForLoop", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for k, v := range testData {
+				if v%2 == 0 {
+					_, _ = k, v
+				}
+			}
+		}
+	})
+}
+
+func BenchmarkReduce(b *testing.B) {
+	b.Run("Iterator", func(b *testing.B) {
+		seq := Seq2[int, int](slices.All(testData))
+		reducer := func(acc, i, v int) int { return acc + v }
+
+		for i := 0; i < b.N; i++ {
+			_ = Reduce(0, reducer, seq)
+		}
+	})
+
+	b.Run("ForLoop", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			acc := 0
+			for _, v := range testData {
+				acc += v
+			}
+			_ = acc
+		}
+	})
+}
+
+func BenchmarkChain(b *testing.B) {
+	b.Run("Iterator", func(b *testing.B) {
+		seq := Seq2[int, int](slices.All(testData))
+
+		predicate := func(i, v int) bool { return v%2 == 0 }
+		mapper := func(i, v int) (int, int) { return i, v * 2 }
+		reducer := func(acc, i, v int) int { return acc + v }
+
+		for i := 0; i < b.N; i++ {
+			filtered := Filter(predicate, seq)
+			mapped := Map(mapper, filtered)
+			_ = Reduce(0, reducer, mapped)
+		}
+	})
+
+	b.Run("ForLoop", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			acc := 0
+			for _, v := range testData {
+				if v%2 == 0 {
+					v = v * 2
+					acc += v
+				}
+			}
+			_ = acc
+		}
+	})
+}
