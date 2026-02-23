@@ -97,6 +97,24 @@ func walkExpr1(n ir.Node, init *ir.Nodes) ir.Node {
 		// StringSym for constant strings.
 		return n
 
+	case ir.OTERNARY:
+		n := n.(*ir.TernaryExpr)
+
+		// var r T
+		// if cond {
+		//     r = n.Then
+		// } else {
+		//     r = n.Else
+		// }
+
+		r := typecheck.TempAt(base.Pos, ir.CurFunc, n.Then.Type())
+		cond := walkExpr(n.Cond, init)
+		thenAssign := ir.NewAssignStmt(base.Pos, r, n.Then)
+		elseAssign := ir.NewAssignStmt(base.Pos, r, n.Else)
+		ifstmt := ir.NewIfStmt(base.Pos, cond, []ir.Node{thenAssign}, []ir.Node{elseAssign})
+		init.Append(ifstmt)
+		return r
+
 	case ir.OMETHEXPR:
 		// TODO(mdempsky): Do this right after type checking.
 		n := n.(*ir.SelectorExpr)
