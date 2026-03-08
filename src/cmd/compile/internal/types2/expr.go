@@ -814,8 +814,10 @@ func (check *Checker) ternary(T *target, x *operand, tern *syntax.TernaryExpr) {
 	}
 
 	// If at least one of the branches is nil, attempt to match types.
-	if t.isNil() || e.isNil() {
-		check.matchTypes(&t, &e)
+	if t.isNil() && !e.isNil() {
+		check.convertUntyped(&t, e.typ)
+	} else {
+		check.convertUntyped(&e, t.typ)
 	}
 
 	// If match failed, or types of then- and else- branches different — fail.
@@ -830,8 +832,18 @@ func (check *Checker) ternary(T *target, x *operand, tern *syntax.TernaryExpr) {
 	check.updateExprType(tern.Then, t.typ, true)
 	check.updateExprType(tern.Else, e.typ, true)
 
-	// Constant ternary expression evaluation is here.
-	if c.mode == constant_ && t.mode == constant_ && e.mode == constant_ {
+	branchesNil := t.mode == nilvalue && e.mode == nilvalue
+	branchesConst := t.mode == constant_ && e.mode == constant_
+
+	if branchesNil {
+		// Return nil always. Setting a type will be attempted later.
+		tern.SetNil()
+		x.mode = t.mode
+		x.typ = t.typ
+		x.id = t.id
+		x.expr = tern.Then
+		x.val = t.val
+	} else if c.mode == constant_ && branchesConst {
 		if constant.BoolVal(c.val) {
 			x.typ = t.typ
 			x.mode = t.mode

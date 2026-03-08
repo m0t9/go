@@ -1805,6 +1805,12 @@ func (w *writer) expr(expr syntax.Expr) {
 	obj, inst := lookupObj(w.p, expr)
 	targs := inst.TypeArgs
 
+	if tern, ok := expr.(*syntax.TernaryExpr); ok {
+		w.Code(exprTernary)
+		w.ternary(tern)
+		return
+	}
+
 	if tv, ok := w.p.maybeTypeAndValue(expr); ok {
 		if tv.IsRuntimeHelper() {
 			if pkg := obj.Pkg(); pkg != nil && pkg.Name() == "runtime" {
@@ -1882,10 +1888,6 @@ func (w *writer) expr(expr syntax.Expr) {
 	case *syntax.FuncLit:
 		w.Code(exprFuncLit)
 		w.funcLit(expr)
-
-	case *syntax.TernaryExpr:
-		w.Code(exprTernary)
-		w.ternary(expr)
 
 	case *syntax.SelectorExpr:
 		sel, ok := w.p.info.Selections[expr]
@@ -2931,6 +2933,11 @@ func lookupObj(p *pkgWriter, expr syntax.Expr) (obj types2.Object, inst types2.I
 		}
 
 		expr = index.X
+	}
+
+	if tern, ok := expr.(*syntax.TernaryExpr); ok && tern.IsNil() {
+		obj = &types2.Nil{}
+		return
 	}
 
 	// Strip package qualifier, if present.

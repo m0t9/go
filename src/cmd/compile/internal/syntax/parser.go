@@ -863,6 +863,14 @@ func (p *parser) expr() Expr {
 	return p.binaryExpr(nil, 0)
 }
 
+func (te *TernaryExpr) IsNil() bool {
+	return te.isNil
+}
+
+func (te *TernaryExpr) SetNil() {
+	te.isNil = true
+}
+
 func (p *parser) ternaryExpr() Expr {
 	if trace {
 		defer p.trace("ternaryExpr")()

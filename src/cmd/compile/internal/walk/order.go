@@ -1211,7 +1211,7 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 		// 		r = b
 		// }
 
-		r := o.newTemp(n.Then.Type(), false)
+		r := o.newTemp(n.Type(), false)
 		cond := o.expr(n.Cond, nil)
 
 		ifstmt := ir.NewIfStmt(

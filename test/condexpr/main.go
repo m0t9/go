@@ -66,6 +66,16 @@ func sideEffects() {
 	}
 
 	reset()
+	var _ *int = (*int)(if updateCond(true) { nil } else { nil })
+	if !cond || thenExpr || elseExpr {
+		panic("Something goes wrong with side effects when nil")
+	}
+
+	reset()
+	var _ int = if updateCond(true) { 5 } else { 10 }
+	if !cond || thenExpr || elseExpr {
+		panic("Something goes wrong with side effects when constant")
+	}
 }
 
 func generic[T any](t T, e T) {

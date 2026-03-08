@@ -107,7 +107,7 @@ func walkExpr1(n ir.Node, init *ir.Nodes) ir.Node {
 		//     r = n.Else
 		// }
 
-		r := typecheck.TempAt(base.Pos, ir.CurFunc, n.Then.Type())
+		r := typecheck.TempAt(base.Pos, ir.CurFunc, n.Type())
 		cond := walkExpr(n.Cond, init)
 		thenAssign := ir.NewAssignStmt(base.Pos, r, n.Then)
 		elseAssign := ir.NewAssignStmt(base.Pos, r, n.Else)

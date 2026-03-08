@@ -328,6 +328,9 @@ func (check *Checker) updateExprType(x ast.Expr, typ Type, final bool) {
 			check.updateExprType(x.X, typ, final)
 			check.updateExprType(x.Y, typ, final)
 		}
+	case *ast.TernaryExpr:
+		check.updateExprType(x.Then, typ, final)
+		check.updateExprType(x.Else, typ, final)
 
 	default:
 		panic("unreachable")
@@ -1180,8 +1183,10 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 		}
 
 		if then.mode == invalid || els.mode == invalid || !Identical(then.typ, els.typ) {
-			check.error(e, MismatchedTypes,
-				"types of then- and else- branches of ternary operator should be identical")
+			check.errorf(e, MismatchedTypes,
+				"types of then- and else- branches of ternary operator should be identical, got: %q and %q",
+				then.typ, els.typ,
+			)
 			goto Error
 		}
 
@@ -1189,12 +1194,20 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 		check.updateExprType(e.Then, then.typ, true)
 		check.updateExprType(e.Else, els.typ, true)
 
-		// Constant ternary expression evaluation is here.
-		if c.mode == constant_ && then.mode == constant_ && els.mode == constant_ {
+		branchesNil := then.mode == nilvalue && els.mode == nilvalue
+		branchesConst := then.mode == constant_ && els.mode == constant_
+
+		if branchesNil {
+			x.mode = then.mode
+			x.typ = then.typ
+			x.expr = then.expr
+			x.val = then.val
+		} else if c.mode == constant_ && branchesConst {
+			// Constant ternary expression evaluation is here.
 			if constant.BoolVal(c.val) {
 				x.typ = then.typ
 				x.mode = then.mode
-				x.expr = e
+				x.expr = e.Then
 				x.val = then.val
 			} else {
 				x.typ = els.typ
