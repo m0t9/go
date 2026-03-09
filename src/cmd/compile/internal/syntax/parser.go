@@ -1118,9 +1118,6 @@ func (p *parser) operand(keep_parens bool) Expr {
 	case _Lbrack, _Chan, _Map, _Struct, _Interface:
 		return p.type_() // othertype
 
-	case _If:
-		return p.ternaryExpr()
-
 	default:
 		x := p.badExpr()
 		p.syntaxError("expected expression")

@@ -117,6 +117,34 @@ func typing() {
 	_ = z
 }
 
+func withDefer() {
+	condExecuted := false
+	cond := func() bool {
+		condExecuted = true
+		return true
+	}
+
+	done := false
+	f := func() {
+		done = true
+	}
+
+	defer func() {
+		if !done {
+			panic("defer after conditional expression did not work")
+		}
+	}()
+	defer (if cond() { f } else { f })()
+
+	if !condExecuted {
+		panic("condition of ternary did not execute being a part of deferred expression")
+	}
+
+	if done {
+		panic("expr returned by conditional expression executed preliminary")
+	}
+}
+
 
 func main() {
 	constants()
@@ -125,4 +153,5 @@ func main() {
 	logic()
 	weird()
 	typing()
+	withDefer()
 }
