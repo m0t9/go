@@ -881,30 +881,15 @@ func (p *parser) ternaryExpr() Expr {
 		p.syntaxError("ternary expression does not support variable initialization")
 	}
 
-	p.next() // {
-
+	p.want(_Lbrace)
 	thenExpr := p.expr()
+	p.want(_Rbrace)
 
-	if p.tok != _Rbrace {
-		p.syntaxError(fmt.Sprintf("unexpected %s, expected }", p.tok))
-	}
-	p.next()
+	p.want(_Else)
 
-	if p.tok != _Else {
-		p.syntaxError(fmt.Sprintf("unexpected %s, expected else", p.tok))
-	}
-	p.next()
-
-	if p.tok != _Lbrace {
-		p.syntaxError(fmt.Sprintf("unexpected %s, expected {", p.tok))
-	}
-	p.next()
+	p.want(_Lbrace)
 	elseExpr := p.expr()
-
-	if p.tok != _Rbrace {
-		p.syntaxError(fmt.Sprintf("unexpected %s, expected }", p.tok))
-	}
-	p.next()
+	p.want(_Rbrace)
 
 	ternary := new(TernaryExpr)
 	ternary.Cond = condExpr
