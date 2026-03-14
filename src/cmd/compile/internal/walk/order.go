@@ -1202,7 +1202,7 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 	case ir.OTERNARY:
 		n := n.(*ir.TernaryExpr)
 
-		// ... = if cond then a else b
+		// ... = if cond { a } else { b }
 		//
 		// var r typeOf(a)
 		// if cond {

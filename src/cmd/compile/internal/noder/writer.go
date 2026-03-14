@@ -1806,7 +1806,6 @@ func (w *writer) expr(expr syntax.Expr) {
 	targs := inst.TypeArgs
 
 	if tern, ok := expr.(*syntax.TernaryExpr); ok {
-		w.Code(exprTernary)
 		w.ternary(tern)
 		return
 	}
@@ -2391,6 +2390,7 @@ func (w *writer) compLit(lit *syntax.CompositeLit) {
 }
 
 func (w *writer) ternary(expr *syntax.TernaryExpr) {
+	w.Code(exprTernary)
 	w.expr(expr.Cond)
 	w.expr(expr.Then)
 	w.expr(expr.Else)
