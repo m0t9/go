@@ -7,6 +7,7 @@ package syntax
 import (
 	"fmt"
 	"go/build/constraint"
+	"internal/buildcfg"
 	"io"
 	"strconv"
 	"strings"
@@ -861,6 +862,56 @@ func (p *parser) expr() Expr {
 	return p.binaryExpr(nil, 0)
 }
 
+func (p *parser) tuple(context string, elem func() Expr) Expr {
+	if trace {
+		defer p.trace(context)()
+	}
+
+	pos := p.pos()
+	p.want(_Lparen)
+	if p.tok == _Rparen {
+		// empty tuple
+		t := &TupleExpr{}
+		t.pos = pos
+		t.Rparen = p.pos()
+		p.next()
+		return t
+	}
+
+	var x Expr
+	var t *TupleExpr
+	trailingComma := false
+
+	rparen := p.list(context, _Comma, _Rparen, func() bool {
+		e := elem()
+		switch {
+		case x == nil:
+			x = e
+		case t == nil:
+			t = new(TupleExpr)
+			t.ElemList = []Expr{x}
+			fallthrough
+		default:
+			t.ElemList = append(t.ElemList, e)
+		}
+		trailingComma = p.tok == _Comma
+		return false
+	})
+
+	if trailingComma && t == nil {
+		t = new(TupleExpr)
+		t.ElemList = []Expr{x}
+	}
+
+	if t != nil {
+		t.pos = pos
+		t.Rparen = rparen
+		return t
+	}
+
+	return x
+}
+
 // Expression = UnaryExpr | Expression binary_op Expression .
 func (p *parser) binaryExpr(x Expr, prec int) Expr {
 	// don't trace binaryExpr - only leads to overly nested trace output
@@ -1013,11 +1064,25 @@ func (p *parser) operand(keep_parens bool) Expr {
 
 	case _Lparen:
 		pos := p.pos()
-		p.next()
-		p.xnest++
-		x := p.expr()
-		p.xnest--
-		p.want(_Rparen)
+
+		var x Expr
+
+		if buildcfg.Experiment.TupleType {
+			p.xnest++
+			x = p.tuple("tuple expression", p.expr)
+			p.xnest--
+
+			// Tuples don't need extra parentheses.
+			if _, ok := x.(*TupleExpr); ok {
+				return x
+			}
+		} else {
+			p.next()
+			p.xnest++
+			x = p.expr()
+			p.xnest--
+			p.want(_Rparen)
+		}
 
 		// Optimization: Record presence of ()'s only where needed
 		// for error reporting. Don't bother in other cases; it is
@@ -1411,20 +1476,24 @@ func (p *parser) typeOrNil() Expr {
 		return p.qualifiedName(nil)
 
 	case _Lparen:
-		p.next()
-		t := p.type_()
-		p.want(_Rparen)
-		// The parser doesn't keep unnecessary parentheses.
-		// Set the flag below to keep them, for testing
-		// (see e.g. tests for go.dev/issue/68639).
-		const keep_parens = false
-		if keep_parens {
-			px := new(ParenExpr)
-			px.pos = pos
-			px.X = t
-			t = px
+		if buildcfg.Experiment.TupleType {
+			return p.tuple("tuple type", p.type_)
+		} else {
+			p.next()
+			t := p.type_()
+			p.want(_Rparen)
+			// The parser doesn't keep unnecessary parentheses.
+			// Set the flag below to keep them, for testing
+			// (see e.g. tests for go.dev/issue/68639).
+			const keep_parens = false
+			if keep_parens {
+				px := new(ParenExpr)
+				px.pos = pos
+				px.X = t
+				t = px
+			}
+			return t
 		}
-		return t
 	}
 
 	return nil
