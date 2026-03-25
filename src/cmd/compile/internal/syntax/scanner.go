@@ -189,6 +189,10 @@ redo:
 			if s.ch == '.' {
 				s.nextch()
 				s.tok = _DotDotDot
+				// TODO: idk how to deal with it for now, it fails on STL compilation
+				// if buildcfg.Experiment.TupleType {
+				// 	s.nlsemi = true
+				// }
 				break
 			}
 			s.rewind() // now s.ch holds 1st '.'

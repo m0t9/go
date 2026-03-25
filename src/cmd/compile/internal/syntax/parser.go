@@ -854,17 +854,50 @@ func (p *parser) funcBody() *BlockStmt {
 // ----------------------------------------------------------------------------
 // Expressions
 
+func (p *parser) tupleEnabled() bool {
+	return buildcfg.Experiment.TupleType && strings.HasSuffix(p.base.filename, "main.go")
+}
+
 func (p *parser) expr() Expr {
 	if trace {
 		defer p.trace("expr")()
 	}
 
-	return p.binaryExpr(nil, 0)
+	e := p.binaryExpr(nil, 0)
+
+	// Process unpack of tuple in a form, for instance
+	// a, b := tup...
+	// f(tup...)
+	if p.tok == _DotDotDot && p.tupleEnabled() {
+		sel := new(SelectorExpr)
+		sel.pos = p.pos()
+		sel.X = e
+		sel.Sel = NewName(p.pos(), "Unpack")
+
+		call := new(CallExpr)
+		call.pos = p.pos()
+		call.Fun = sel
+
+		p.next()
+
+		return call
+	}
+
+	return e
 }
 
-func (p *parser) tuple(context string, elem func() Expr) Expr {
+func (p *parser) tuple(context string) Expr {
 	if trace {
 		defer p.trace(context)()
+	}
+
+	var elem func() Expr
+	if context == "tuple type" {
+		elem = p.type_
+	} else if context == "tuple expr" {
+		elem = p.expr
+	} else {
+		panic(fmt.Sprintf("unknown tuple parsing form %q", context))
 	}
 
 	pos := p.pos()
@@ -906,10 +939,42 @@ func (p *parser) tuple(context string, elem func() Expr) Expr {
 	if t != nil {
 		t.pos = pos
 		t.Rparen = rparen
-		return t
+		return p.tupleToStd(t, context)
 	}
 
 	return x
+}
+
+func (p *parser) tupleToStd(t *TupleExpr, form string) Expr {
+	if form == "tuple expr" {
+		sel := new(SelectorExpr)
+		sel.pos = p.pos()
+		sel.X = NewName(p.pos(), "tuple")
+		sel.Sel = NewName(p.pos(), fmt.Sprintf("Make%d", len(t.ElemList)))
+
+		call := new(CallExpr)
+		call.pos = p.pos()
+		call.Fun = sel
+		call.ArgList = t.ElemList
+
+		return call
+	} else if form == "tuple type" {
+		sel := new(SelectorExpr)
+		sel.pos = p.pos()
+		sel.X = NewName(p.pos(), "tuple")
+		sel.Sel = NewName(p.pos(), fmt.Sprintf("T%d", len(t.ElemList)))
+
+		lst := new(ListExpr)
+		lst.ElemList = t.ElemList
+
+		ind := new(IndexExpr)
+		ind.X = sel
+		ind.Index = lst
+
+		return ind
+	} else {
+		panic("Unknown tuple form")
+	}
 }
 
 // Expression = UnaryExpr | Expression binary_op Expression .
@@ -1067,9 +1132,9 @@ func (p *parser) operand(keep_parens bool) Expr {
 
 		var x Expr
 
-		if buildcfg.Experiment.TupleType {
+		if p.tupleEnabled() {
 			p.xnest++
-			x = p.tuple("tuple expression", p.expr)
+			x = p.tuple("tuple expr")
 			p.xnest--
 
 			// Tuples don't need extra parentheses.
@@ -1476,8 +1541,8 @@ func (p *parser) typeOrNil() Expr {
 		return p.qualifiedName(nil)
 
 	case _Lparen:
-		if buildcfg.Experiment.TupleType {
-			return p.tuple("tuple type", p.type_)
+		if p.tupleEnabled() {
+			return p.tuple("tuple type")
 		} else {
 			p.next()
 			t := p.type_()
@@ -1650,8 +1715,10 @@ func (p *parser) funcResult() []*Field {
 		defer p.trace("funcResult")()
 	}
 
-	if p.got(_Lparen) {
-		return p.paramList(nil, nil, _Rparen, false, false)
+	if !p.tupleEnabled() {
+		if p.got(_Lparen) {
+			return p.paramList(nil, nil, _Rparen, false, false)
+		}
 	}
 
 	pos := p.pos()
@@ -1963,10 +2030,6 @@ func (p *parser) embeddedTerm() Expr {
 
 // ParameterDecl = [ IdentifierList ] [ "..." ] Type .
 func (p *parser) paramDeclOrNil(name *Name, follow token) *Field {
-	if trace {
-		defer p.trace("paramDeclOrNil")()
-	}
-
 	// type set notation is ok in type parameter lists
 	typeSetsOk := follow == _Rbrack
 
@@ -2002,6 +2065,13 @@ func (p *parser) paramDeclOrNil(name *Name, follow token) *Field {
 				// name "[" n "]" E "|" ...
 				f = p.embeddedElem(f)
 			}
+			return f
+		}
+
+		// Tuple type
+		if p.tupleEnabled() && p.tok == _Lparen {
+			f.Type = p.tuple("tuple type")
+			f.Name = name
 			return f
 		}
 
@@ -2757,7 +2827,11 @@ func (p *parser) stmtOrNil() Stmt {
 		s.pos = p.pos()
 		p.next()
 		if p.tok != _Semi && p.tok != _Rbrace {
-			s.Results = p.exprList()
+			if p.tupleEnabled() {
+				s.Results = p.expr()
+			} else {
+				s.Results = p.exprList()
+			}
 		}
 		return s
 
