@@ -855,6 +855,8 @@ func (p *parser) funcBody() *BlockStmt {
 // Expressions
 
 func (p *parser) tupleEnabled() bool {
+	// wd, _ := os.Getwd()
+	// fmt.Println(p.base.filename, wd)
 	return buildcfg.Experiment.TupleType && strings.HasSuffix(p.base.filename, "main.go")
 }
 
@@ -950,7 +952,7 @@ func (p *parser) tupleToStd(t *TupleExpr, form string) Expr {
 		sel := new(SelectorExpr)
 		sel.pos = p.pos()
 		sel.X = NewName(p.pos(), "tuple")
-		sel.Sel = NewName(p.pos(), fmt.Sprintf("Make%d", len(t.ElemList)))
+		sel.Sel = NewName(p.pos(), fmt.Sprintf("MakeOf%d", len(t.ElemList)))
 
 		call := new(CallExpr)
 		call.pos = p.pos()
@@ -962,7 +964,7 @@ func (p *parser) tupleToStd(t *TupleExpr, form string) Expr {
 		sel := new(SelectorExpr)
 		sel.pos = p.pos()
 		sel.X = NewName(p.pos(), "tuple")
-		sel.Sel = NewName(p.pos(), fmt.Sprintf("T%d", len(t.ElemList)))
+		sel.Sel = NewName(p.pos(), fmt.Sprintf("Of%d", len(t.ElemList)))
 
 		lst := new(ListExpr)
 		lst.ElemList = t.ElemList
@@ -1111,7 +1113,7 @@ func (p *parser) callStmt() *CallStmt {
 	return s
 }
 
-// Operand     = Literal | OperandName | MethodExpr | "(" Expression ")" .
+// Operand     = Literal | OperandName | MethodExpr | TupleExpr | "(" Expression ")" .
 // Literal     = BasicLit | CompositeLit | FunctionLit .
 // BasicLit    = int_lit | float_lit | imaginary_lit | rune_lit | string_lit .
 // OperandName = identifier | QualifiedIdent.
