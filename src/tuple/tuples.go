@@ -25,7 +25,7 @@ func MakeOf1[I1 any](i1 I1) Of1[I1] {
 	}
 }
 
-func (t *Of1[I1]) Unpack() I1 {
+func (t Of1[I1]) Unpack() I1 {
 	return t.I1
 }
 
@@ -41,7 +41,7 @@ func MakeOf2[I1, I2 any](i1 I1, i2 I2) Of2[I1, I2] {
 	}
 }
 
-func (t *Of2[I1, I2]) Unpack() (I1, I2) {
+func (t Of2[I1, I2]) Unpack() (I1, I2) {
 	return t.I1, t.I2
 }
 
@@ -59,7 +59,7 @@ func MakeOf3[I1, I2, I3 any](i1 I1, i2 I2, i3 I3) Of3[I1, I2, I3] {
 	}
 }
 
-func (t *Of3[I1, I2, I3]) Unpack() (I1, I2, I3) {
+func (t Of3[I1, I2, I3]) Unpack() (I1, I2, I3) {
 	return t.I1, t.I2, t.I3
 }
 
@@ -79,7 +79,7 @@ func MakeOf4[I1, I2, I3, I4 any](i1 I1, i2 I2, i3 I3, i4 I4) Of4[I1, I2, I3, I4]
 	}
 }
 
-func (t *Of4[I1, I2, I3, I4]) Unpack() (I1, I2, I3, I4) {
+func (t Of4[I1, I2, I3, I4]) Unpack() (I1, I2, I3, I4) {
 	return t.I1, t.I2, t.I3, t.I4
 }
 
@@ -101,6 +101,6 @@ func MakeOf5[I1, I2, I3, I4, I5 any](i1 I1, i2 I2, i3 I3, i4 I4, i5 I5) Of5[I1, 
 	}
 }
 
-func (t *Of5[I1, I2, I3, I4, I5]) Unpack() (I1, I2, I3, I4, I5) {
+func (t Of5[I1, I2, I3, I4, I5]) Unpack() (I1, I2, I3, I4, I5) {
 	return t.I1, t.I2, t.I3, t.I4, t.I5
 }

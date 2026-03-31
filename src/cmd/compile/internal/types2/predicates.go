@@ -302,21 +302,6 @@ func (c *comparer) identical(x, y Type, p *ifacePair) bool {
 			}
 		}
 
-	case *TupleType:
-		// Two tuple types are identical if they have the same number of elements
-		// and corresponding elements have identical types.
-		if y, ok := y.(*TupleType); ok {
-			if x.Len() == y.Len() {
-				for i, s := range x.elems {
-					t := y.elems[i]
-					if !c.identical(s, t, p) {
-						return false
-					}
-				}
-				return true
-			}
-		}
-
 	case *Pointer:
 		// Two pointer types are identical if they have identical base types.
 		if y, ok := y.(*Pointer); ok {

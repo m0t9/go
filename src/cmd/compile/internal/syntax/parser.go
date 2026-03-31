@@ -855,8 +855,6 @@ func (p *parser) funcBody() *BlockStmt {
 // Expressions
 
 func (p *parser) tupleEnabled() bool {
-	// wd, _ := os.Getwd()
-	// fmt.Println(p.base.filename, wd)
 	return buildcfg.Experiment.TupleType && strings.HasSuffix(p.base.filename, "main.go")
 }
 

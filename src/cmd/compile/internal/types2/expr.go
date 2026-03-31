@@ -1039,52 +1039,6 @@ func (check *Checker) exprInternal(T *target, x *operand, e syntax.Expr, hint Ty
 	case *syntax.BadExpr:
 		goto Error // error was reported before
 
-	case *syntax.TupleExpr:
-		elems := make([]Type, len(e.ElemList))
-		mode := invalid
-		for i, e := range e.ElemList {
-			check.exprOrType(x, e, false)
-			switch x.mode {
-			case invalid:
-				// ignore
-			case builtin:
-				panic("builtin")
-			case nilvalue:
-				panic("nil value")
-			case cgofunc:
-				panic("cgo function")
-			case typexpr:
-				// nothing to do
-			case constant_:
-				x.typ = Default(x.typ)
-				fallthrough
-			default:
-				x.mode = value
-			}
-
-			switch mode {
-			case invalid:
-				mode = x.mode
-			case value:
-				if x.mode != value {
-					// TODO(gri) provide proper error code
-					check.errorf(e, InvalidUnion, "invalid tuple literal: %s is not a value", x)
-				}
-			case typexpr:
-				if x.mode != typexpr {
-					// TODO(gri) provide proper error code
-					check.errorf(e, InvalidUnion, "invalid tuple type: %s is not a type", x)
-				}
-			default:
-				panic("unreachable")
-			}
-
-			elems[i] = x.typ
-		}
-		x.mode = mode
-		x.expr = e
-		x.typ = &TupleType{elems}
-
 	case *syntax.Name:
 		check.ident(x, e, nil, false)
 

@@ -330,12 +330,6 @@ func (check *Checker) typInternal(e0 syntax.Expr, def *TypeName) (T Type) {
 		check.structType(typ, e)
 		return typ
 
-	case *syntax.TupleExpr:
-		typ := new(TupleType)
-		setDefType(def, typ)
-		check.tupleType(typ, e)
-		return typ
-
 	case *syntax.Operation:
 		if e.Op == syntax.Mul && e.Y == nil {
 			typ := new(Pointer)

@@ -288,19 +288,6 @@ func (w *typeWriter) typ(typ Type) {
 			w.byte(')')
 		}
 
-	case *TupleType:
-		w.byte('(')
-		for i, t := range t.elems {
-			if i > 0 {
-				w.string(", ")
-			}
-			w.typ(t)
-		}
-		if len(t.elems) == 1 {
-			w.string(",") // no blank after comma (don't use w.byte)
-		}
-		w.byte(')')
-
 	case *Named:
 		// If hashing, write a unique prefix for t to represent its identity, since
 		// named type identity is pointer identity.
