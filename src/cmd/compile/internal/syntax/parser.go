@@ -7,6 +7,7 @@ package syntax
 import (
 	"fmt"
 	"go/build/constraint"
+	"internal/buildcfg"
 	"io"
 	"strconv"
 	"strings"
@@ -928,7 +929,9 @@ func (p *parser) unaryExpr() Expr {
 
 	switch p.tok {
 	case _If:
-		return p.ternaryExpr()
+		if buildcfg.Experiment.CondExpr {
+			return p.ternaryExpr()
+		}
 	case _Operator, _Star:
 		switch p.op {
 		case Mul, Add, Sub, Not, Xor, Tilde:

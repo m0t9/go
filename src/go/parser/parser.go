@@ -30,6 +30,7 @@ import (
 	"go/build/constraint"
 	"go/scanner"
 	"go/token"
+	"internal/buildcfg"
 	"strings"
 )
 
@@ -1808,7 +1809,9 @@ func (p *parser) parseUnaryExpr() ast.Expr {
 
 	switch p.tok {
 	case token.IF:
-		return p.parseTernaryExpr()
+		if buildcfg.Experiment.CondExpr {
+			return p.parseTernaryExpr()
+		}
 	case token.ADD, token.SUB, token.NOT, token.XOR, token.AND, token.TILDE:
 		pos, op := p.pos, p.tok
 		p.next()
