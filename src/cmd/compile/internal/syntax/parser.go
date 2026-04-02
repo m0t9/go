@@ -9,6 +9,7 @@ import (
 	"go/build/constraint"
 	"internal/buildcfg"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -35,6 +36,15 @@ type parser struct {
 	indent []byte // tracing support
 }
 
+var goroot string
+
+func gorootPath() string {
+	if goroot == "" {
+		goroot = os.Getenv("GOROOT")
+	}
+	return goroot
+}
+
 func (p *parser) init(file *PosBase, r io.Reader, errh ErrorHandler, pragh PragmaHandler, mode Mode) {
 	p.top = true
 	p.file = file
@@ -42,6 +52,7 @@ func (p *parser) init(file *PosBase, r io.Reader, errh ErrorHandler, pragh Pragm
 	p.mode = mode
 	p.pragh = pragh
 	p.scanner.init(
+		file,
 		r,
 		// Error and directive handler for scanner.
 		// Because the (line, col) positions passed to the
@@ -855,7 +866,11 @@ func (p *parser) funcBody() *BlockStmt {
 // Expressions
 
 func (p *parser) tupleEnabled() bool {
-	return buildcfg.Experiment.TupleType && strings.HasSuffix(p.base.filename, "main.go")
+	// Tuple is enabled if feature toggle is true as well as
+	// it does not compile compiler sources.
+	return buildcfg.Experiment.TupleType &&
+		!strings.HasPrefix(p.base.filename, gorootPath()) ||
+		strings.HasPrefix(p.base.filename, gorootPath()+"/bin")
 }
 
 func (p *parser) expr() Expr {
