@@ -923,7 +923,7 @@ func (p *parser) tuple(context string) Expr {
 		t.pos = pos
 		t.Rparen = p.pos()
 		p.next()
-		return t
+		return p.tupleToStd(t, context)
 	}
 
 	var x Expr
@@ -978,6 +978,11 @@ func (p *parser) tupleToStd(t *TupleExpr, form string) Expr {
 		sel.pos = p.pos()
 		sel.X = NewName(p.pos(), "tuple")
 		sel.Sel = NewName(p.pos(), fmt.Sprintf("Of%d", len(t.ElemList)))
+
+		// Empty tuple case
+		if len(t.ElemList) == 0 {
+			return sel
+		}
 
 		lst := new(ListExpr)
 		lst.ElemList = t.ElemList
