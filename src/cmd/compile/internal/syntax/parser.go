@@ -415,6 +415,15 @@ func (p *parser) fileOrNil() *File {
 	f := new(File)
 	f.pos = p.pos()
 
+	if p.tupleEnabled() {
+		f.DeclList = append(f.DeclList, &ImportDecl{
+			Path: &BasicLit{
+				Value: `"tuple"`,
+				Kind:  StringLit,
+			},
+		})
+	}
+
 	// PackageClause
 	f.GoVersion = p.goVersion
 	p.top = false
