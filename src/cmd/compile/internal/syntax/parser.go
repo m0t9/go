@@ -912,18 +912,24 @@ func (p *parser) expr() Expr {
 	return e
 }
 
-func (p *parser) tuple(context string) Expr {
+type tupleContext string
+
+const (
+	tupleType tupleContext = "type"
+	tupleExpr tupleContext = "expr"
+)
+
+func (p *parser) tuple(context tupleContext) Expr {
 	if trace {
-		defer p.trace(context)()
+		defer p.trace("tuple")()
 	}
 
 	var elem func() Expr
-	if context == "tuple type" {
+	switch context {
+	case tupleType:
 		elem = p.type_
-	} else if context == "tuple expr" {
+	case tupleExpr:
 		elem = p.expr
-	} else {
-		panic(fmt.Sprintf("unknown tuple parsing form %q", context))
 	}
 
 	pos := p.pos()
@@ -941,7 +947,7 @@ func (p *parser) tuple(context string) Expr {
 	var t *TupleExpr
 	trailingComma := false
 
-	rparen := p.list(context, _Comma, _Rparen, func() bool {
+	rparen := p.list("tuple", _Comma, _Rparen, func() bool {
 		e := elem()
 		switch {
 		case x == nil:
@@ -971,41 +977,50 @@ func (p *parser) tuple(context string) Expr {
 	return x
 }
 
-func (p *parser) tupleToStd(t *TupleExpr, form string) Expr {
+func (p *parser) tupleExprToStd(t *TupleExpr) Expr {
+	sel := new(SelectorExpr)
+	sel.pos = p.pos()
+	sel.X = NewName(p.pos(), "tuple")
+	sel.Sel = NewName(p.pos(), fmt.Sprintf("MakeOf%d", len(t.ElemList)))
+
+	call := new(CallExpr)
+	call.pos = p.pos()
+	call.Fun = sel
+	call.ArgList = t.ElemList
+
+	return call
+}
+
+func (p *parser) tupleTypeToStd(t *TupleExpr) Expr {
+	sel := new(SelectorExpr)
+	sel.pos = p.pos()
+	sel.X = NewName(p.pos(), "tuple")
+	sel.Sel = NewName(p.pos(), fmt.Sprintf("Of%d", len(t.ElemList)))
+
+	// Empty tuple case
+	if len(t.ElemList) == 0 {
+		return sel
+	}
+
+	lst := new(ListExpr)
+	lst.ElemList = t.ElemList
+
+	ind := new(IndexExpr)
+	ind.X = sel
+	ind.Index = lst
+
+	return ind
+}
+
+func (p *parser) tupleToStd(t *TupleExpr, form tupleContext) Expr {
 	p.tupleUsed = true
-	if form == "tuple expr" {
-		sel := new(SelectorExpr)
-		sel.pos = p.pos()
-		sel.X = NewName(p.pos(), "tuple")
-		sel.Sel = NewName(p.pos(), fmt.Sprintf("MakeOf%d", len(t.ElemList)))
-
-		call := new(CallExpr)
-		call.pos = p.pos()
-		call.Fun = sel
-		call.ArgList = t.ElemList
-
-		return call
-	} else if form == "tuple type" {
-		sel := new(SelectorExpr)
-		sel.pos = p.pos()
-		sel.X = NewName(p.pos(), "tuple")
-		sel.Sel = NewName(p.pos(), fmt.Sprintf("Of%d", len(t.ElemList)))
-
-		// Empty tuple case
-		if len(t.ElemList) == 0 {
-			return sel
-		}
-
-		lst := new(ListExpr)
-		lst.ElemList = t.ElemList
-
-		ind := new(IndexExpr)
-		ind.X = sel
-		ind.Index = lst
-
-		return ind
-	} else {
-		panic("Unknown tuple form")
+	switch form {
+	case tupleType:
+		return p.tupleTypeToStd(t)
+	case tupleExpr:
+		return p.tupleExprToStd(t)
+	default:
+		panic("unreachable")
 	}
 }
 
@@ -1166,7 +1181,7 @@ func (p *parser) operand(keep_parens bool) Expr {
 
 		if p.tupleEnabled() {
 			p.xnest++
-			x = p.tuple("tuple expr")
+			x = p.tuple(tupleExpr)
 			p.xnest--
 
 			// Tuples don't need extra parentheses.
@@ -1574,7 +1589,7 @@ func (p *parser) typeOrNil() Expr {
 
 	case _Lparen:
 		if p.tupleEnabled() {
-			return p.tuple("tuple type")
+			return p.tuple(tupleType)
 		} else {
 			p.next()
 			t := p.type_()
@@ -2102,7 +2117,7 @@ func (p *parser) paramDeclOrNil(name *Name, follow token) *Field {
 
 		// Tuple type
 		if p.tupleEnabled() && p.tok == _Lparen {
-			f.Type = p.tuple("tuple type")
+			f.Type = p.tuple(tupleType)
 			f.Name = name
 			return f
 		}
