@@ -34,6 +34,8 @@ type parser struct {
 	fnest  int    // function nesting level (for error handling)
 	xnest  int    // expression nesting level (for complit ambiguity resolution)
 	indent []byte // tracing support
+
+	tupleUsed bool // whether to import package with tuples to given file
 }
 
 var goroot string
@@ -415,15 +417,6 @@ func (p *parser) fileOrNil() *File {
 	f := new(File)
 	f.pos = p.pos()
 
-	if p.tupleEnabled() {
-		f.DeclList = append(f.DeclList, &ImportDecl{
-			Path: &BasicLit{
-				Value: `"tuple"`,
-				Kind:  StringLit,
-			},
-		})
-	}
-
 	// PackageClause
 	f.GoVersion = p.goVersion
 	p.top = false
@@ -496,6 +489,15 @@ func (p *parser) fileOrNil() *File {
 
 	p.clearPragma()
 	f.EOF = p.pos()
+
+	if p.tupleEnabled() && p.tupleUsed {
+		f.DeclList = append(f.DeclList, &ImportDecl{
+			Path: &BasicLit{
+				Value: `"tuple"`,
+				Kind:  StringLit,
+			},
+		})
+	}
 
 	return f
 }
@@ -970,6 +972,7 @@ func (p *parser) tuple(context string) Expr {
 }
 
 func (p *parser) tupleToStd(t *TupleExpr, form string) Expr {
+	p.tupleUsed = true
 	if form == "tuple expr" {
 		sel := new(SelectorExpr)
 		sel.pos = p.pos()
