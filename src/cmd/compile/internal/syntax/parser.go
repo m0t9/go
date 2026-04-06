@@ -880,8 +880,8 @@ func (p *parser) tupleEnabled() bool {
 	// Tuple is enabled if feature toggle is true as well as
 	// it does not compile compiler sources.
 	return buildcfg.Experiment.TupleType &&
-		!strings.HasPrefix(p.base.filename, gorootPath()) ||
-		strings.HasPrefix(p.base.filename, gorootPath()+"/bin")
+		(!strings.HasPrefix(p.base.filename, gorootPath()) ||
+			strings.HasPrefix(p.base.filename, gorootPath()+"/bin"))
 }
 
 func (p *parser) expr() Expr {

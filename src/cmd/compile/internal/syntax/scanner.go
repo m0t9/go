@@ -59,8 +59,8 @@ func (s *scanner) tupleEnabled() bool {
 	// Tuple is enabled if feature toggle is true as well as
 	// it does not compile compiler sources.
 	return buildcfg.Experiment.TupleType &&
-		!strings.HasPrefix(s.posBase.filename, gorootPath()) ||
-		strings.HasPrefix(s.posBase.filename, gorootPath()+"/bin")
+		(!strings.HasPrefix(s.posBase.filename, gorootPath()) ||
+			strings.HasPrefix(s.posBase.filename, gorootPath()+"/bin"))
 }
 
 // errorf reports an error at the most recently read character position.
