@@ -8,15 +8,38 @@ import (
 	. "iter"
 	"slices"
 	"testing"
+	"tuple"
 )
+
+func TestMmap(t *testing.T) {
+	t.Parallel()
+
+	nums := []int{2, 3, 4, 5}
+	squared := slices.Collect(
+		Values(Mmap(func(idx, x int) (int, int) {
+			return idx, x * x
+		}, slices.All(nums))),
+	)
+
+	for idx, i := range []int{2, 3, 4, 5} {
+		wantSquared := i * i
+		if gotSquared := squared[idx]; gotSquared != wantSquared {
+			t.Errorf("iter.Map gives invalid %d-th item of squared nums. have %d, want %d", idx+1, gotSquared, wantSquared)
+		}
+	}
+
+	if wantLen, gotLen := 4, len(squared); wantLen != gotLen {
+		t.Errorf("iter.Map gives a sequence of invalid length. have %d, want %d", gotLen, wantLen)
+	}
+}
 
 func TestMap(t *testing.T) {
 	t.Parallel()
 
 	nums := []int{2, 3, 4, 5}
 	squared := slices.Collect(
-		Values(Map(func(idx, x int) (int, int) {
-			return idx, x * x
+		Values(Map(func(idx, x int) tuple.Of2[int, int] {
+			return tuple.MakeOf2(idx, x*x)
 		}, slices.All(nums))),
 	)
 

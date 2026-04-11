@@ -211,6 +211,7 @@ package iter
 import (
 	"internal/race"
 	"runtime"
+	"tuple"
 	"unsafe"
 )
 
@@ -470,11 +471,22 @@ func Pull2[K, V any](seq Seq2[K, V]) (next func() (K, V, bool), stop func()) {
 // exited via runtime.Goexit.
 var goexitPanicValue any = new(int)
 
-// Map returns an iterator over f applied to seq items.
-func Map[A, B, C, D any](f func(A, B) (C, D), seq Seq2[A, B]) Seq2[C, D] {
+// Mmap returns an iterator over f applied to seq items.
+// Exists only for multiple return values reason.
+func Mmap[A, B, C, D any](f func(A, B) (C, D), seq Seq2[A, B]) Seq2[C, D] {
 	return func(yield func(C, D) bool) {
 		for k, v := range seq {
 			if !yield(f(k, v)) {
+				break
+			}
+		}
+	}
+}
+
+func Map[A, B, C, D any](f func(A, B) tuple.Of2[C, D], seq Seq2[A, B]) Seq2[C, D] {
+	return func(yield func(C, D) bool) {
+		for k, v := range seq {
+			if !yield(f(k, v).Unpack()) {
 				break
 			}
 		}
