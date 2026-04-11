@@ -396,6 +396,13 @@ type (
 		Rparen   token.Pos // position of ")"
 	}
 
+	// A TernaryExpr node represents conditional ternary expression.
+	TernaryExpr struct {
+		Cond Expr // Condition
+		Then Expr // Then-branch
+		Else Expr // Else-branch
+	}
+
 	// A StarExpr node represents an expression of the form "*" Expression.
 	// Semantically it could be a unary "*" expression, or a pointer type.
 	//
@@ -526,9 +533,11 @@ func (x *FuncType) Pos() token.Pos {
 func (x *InterfaceType) Pos() token.Pos { return x.Interface }
 func (x *MapType) Pos() token.Pos       { return x.Map }
 func (x *ChanType) Pos() token.Pos      { return x.Begin }
+func (x *TernaryExpr) Pos() token.Pos   { return x.Cond.Pos() }
 
-func (x *BadExpr) End() token.Pos { return x.To }
-func (x *Ident) End() token.Pos   { return token.Pos(int(x.NamePos) + len(x.Name)) }
+func (x *TernaryExpr) End() token.Pos { return x.Else.End() }
+func (x *BadExpr) End() token.Pos     { return x.To }
+func (x *Ident) End() token.Pos       { return token.Pos(int(x.NamePos) + len(x.Name)) }
 func (x *Ellipsis) End() token.Pos {
 	if x.Elt != nil {
 		return x.Elt.End()
@@ -580,6 +589,7 @@ func (*StarExpr) exprNode()       {}
 func (*UnaryExpr) exprNode()      {}
 func (*BinaryExpr) exprNode()     {}
 func (*KeyValueExpr) exprNode()   {}
+func (*TernaryExpr) exprNode()    {}
 
 func (*ArrayType) exprNode()     {}
 func (*StructType) exprNode()    {}

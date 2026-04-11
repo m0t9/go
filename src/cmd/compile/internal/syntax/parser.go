@@ -7,13 +7,16 @@ package syntax
 import (
 	"fmt"
 	"go/build/constraint"
+	"internal/buildcfg"
 	"io"
 	"strconv"
 	"strings"
 )
 
-const debug = false
-const trace = false
+const (
+	debug = false
+	trace = false
+)
 
 type parser struct {
 	file  *PosBase
@@ -861,6 +864,43 @@ func (p *parser) expr() Expr {
 	return p.binaryExpr(nil, 0)
 }
 
+func (te *TernaryExpr) IsNil() bool {
+	return te.isNil
+}
+
+func (te *TernaryExpr) SetNil() {
+	te.isNil = true
+}
+
+func (p *parser) ternaryExpr() Expr {
+	if trace {
+		defer p.trace("ternaryExpr")()
+	}
+
+	init, condExpr, _ := p.header(_If)
+	if init != nil {
+		p.syntaxError("ternary expression does not support variable initialization")
+	}
+
+	p.want(_Lbrace)
+	thenExpr := p.expr()
+	p.want(_Rbrace)
+
+	p.want(_Else)
+
+	p.want(_Lbrace)
+	elseExpr := p.expr()
+	p.want(_Rbrace)
+
+	ternary := new(TernaryExpr)
+	ternary.Cond = condExpr
+	ternary.Then = thenExpr
+	ternary.Else = elseExpr
+	ternary.pos = condExpr.Pos()
+
+	return ternary
+}
+
 // Expression = UnaryExpr | Expression binary_op Expression .
 func (p *parser) binaryExpr(x Expr, prec int) Expr {
 	// don't trace binaryExpr - only leads to overly nested trace output
@@ -888,6 +928,10 @@ func (p *parser) unaryExpr() Expr {
 	}
 
 	switch p.tok {
+	case _If:
+		if buildcfg.Experiment.CondExpr {
+			return p.ternaryExpr()
+		}
 	case _Operator, _Star:
 		switch p.op {
 		case Mul, Add, Sub, Not, Xor, Tilde:

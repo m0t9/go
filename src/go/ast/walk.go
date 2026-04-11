@@ -119,6 +119,10 @@ func Walk(v Visitor, node Node) {
 	case *CallExpr:
 		Walk(v, n.Fun)
 		walkList(v, n.Args)
+	case *TernaryExpr:
+		Walk(v, n.Cond)
+		Walk(v, n.Then)
+		Walk(v, n.Else)
 
 	case *StarExpr:
 		Walk(v, n.X)

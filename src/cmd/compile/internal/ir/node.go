@@ -250,6 +250,7 @@ const (
 	OUNSAFESTRINGDATA // unsafe.StringData(X)
 	OMETHEXPR         // X(Args) (method expression T.Method(args), first argument is the method receiver)
 	OMETHVALUE        // X.Sel   (method expression t.Method, not called)
+	OTERNARY
 
 	// statements
 	OBLOCK // { List } (block of code)
