@@ -14,7 +14,9 @@ package syntax
 
 import (
 	"fmt"
+	"internal/buildcfg"
 	"io"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -29,6 +31,9 @@ const (
 
 type scanner struct {
 	source
+
+	posBase *PosBase
+
 	mode   uint
 	nlsemi bool // if set '\n' and EOF translate to ';'
 
@@ -43,10 +48,18 @@ type scanner struct {
 	prec      int      // valid if tok is _Operator, _Star, _AssignOp, or _IncOp
 }
 
-func (s *scanner) init(src io.Reader, errh func(line, col uint, msg string), mode uint) {
+func (s *scanner) init(file *PosBase, src io.Reader, errh func(line, col uint, msg string), mode uint) {
 	s.source.init(src, errh)
+	s.posBase = file
 	s.mode = mode
 	s.nlsemi = false
+}
+
+func (s *scanner) tupleEnabled() bool {
+	// Tuple is enabled if feature toggle is true as well as
+	// it does not compile compiler sources.
+	return buildcfg.Experiment.TupleType &&
+		!strings.HasPrefix(s.posBase.filename, gorootPath()+"/src")
 }
 
 // errorf reports an error at the most recently read character position.
@@ -189,6 +202,9 @@ redo:
 			if s.ch == '.' {
 				s.nextch()
 				s.tok = _DotDotDot
+				if s.tupleEnabled() {
+					s.nlsemi = true
+				}
 				break
 			}
 			s.rewind() // now s.ch holds 1st '.'

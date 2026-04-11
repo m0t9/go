@@ -838,6 +838,8 @@ func (check *Checker) selector(x *operand, e *syntax.SelectorExpr, def *TypeName
 			alt, _, _ := lookupFieldOrMethod(x.typ, x.mode == variable, check.pkg, sel, true)
 			why = check.lookupError(x.typ, sel, alt, false)
 		}
+
+		// TODO: here add replacement of node to slice unpack
 		check.errorf(e.Sel, MissingFieldOrMethod, "%s.%s undefined (%s)", x.expr, sel, why)
 		goto Error
 	}

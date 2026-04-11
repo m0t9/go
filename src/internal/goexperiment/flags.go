@@ -132,4 +132,7 @@ type Flags struct {
 
 	// GreenTeaGC enables the Green Tea GC implementation.
 	GreenTeaGC bool
+
+	// TupleType enables tuples instead of multiple return values.
+	TupleType bool
 }

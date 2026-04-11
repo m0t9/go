@@ -187,6 +187,14 @@ type (
 		expr
 	}
 
+	// ( ElemList[0], ElemList[1], ... )
+	// Can be tuple type declaration or its value declaration
+	TupleExpr struct {
+		ElemList []Expr
+		Rparen   Pos
+		expr
+	}
+
 	// X.Sel
 	SelectorExpr struct {
 		X   Expr

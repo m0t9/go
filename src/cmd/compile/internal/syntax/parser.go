@@ -9,6 +9,7 @@ import (
 	"go/build/constraint"
 	"internal/buildcfg"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -35,6 +36,17 @@ type parser struct {
 	fnest  int    // function nesting level (for error handling)
 	xnest  int    // expression nesting level (for complit ambiguity resolution)
 	indent []byte // tracing support
+
+	tupleUsed bool // whether to import package with tuples to given file
+}
+
+var goroot string
+
+func gorootPath() string {
+	if goroot == "" {
+		goroot = os.Getenv("GOROOT")
+	}
+	return goroot
 }
 
 func (p *parser) init(file *PosBase, r io.Reader, errh ErrorHandler, pragh PragmaHandler, mode Mode) {
@@ -44,6 +56,7 @@ func (p *parser) init(file *PosBase, r io.Reader, errh ErrorHandler, pragh Pragm
 	p.mode = mode
 	p.pragh = pragh
 	p.scanner.init(
+		file,
 		r,
 		// Error and directive handler for scanner.
 		// Because the (line, col) positions passed to the
@@ -479,6 +492,15 @@ func (p *parser) fileOrNil() *File {
 	p.clearPragma()
 	f.EOF = p.pos()
 
+	if p.tupleEnabled() && p.tupleUsed {
+		f.DeclList = append(f.DeclList, &ImportDecl{
+			Path: &BasicLit{
+				Value: `"tuple"`,
+				Kind:  StringLit,
+			},
+		})
+	}
+
 	return f
 }
 
@@ -856,12 +878,150 @@ func (p *parser) funcBody() *BlockStmt {
 // ----------------------------------------------------------------------------
 // Expressions
 
+func (p *parser) tupleEnabled() bool {
+	// Tuple is enabled if feature toggle is true as well as
+	// it does not compile compiler sources.
+	return buildcfg.Experiment.TupleType && !strings.HasPrefix(p.base.filename, gorootPath()+"/src")
+}
+
 func (p *parser) expr() Expr {
 	if trace {
 		defer p.trace("expr")()
 	}
 
-	return p.binaryExpr(nil, 0)
+	e := p.binaryExpr(nil, 0)
+
+	// Process unpack of tuple in a form, for instance
+	// a, b := tup...
+	// f(tup...)
+	if p.tok == _DotDotDot && p.tupleEnabled() {
+		sel := new(SelectorExpr)
+		sel.pos = p.pos()
+		sel.X = e
+		sel.Sel = NewName(p.pos(), "Unpack")
+
+		call := new(CallExpr)
+		call.pos = p.pos()
+		call.Fun = sel
+
+		p.next()
+
+		return call
+	}
+
+	return e
+}
+
+type tupleContext string
+
+const (
+	tupleType tupleContext = "type"
+	tupleExpr tupleContext = "expr"
+)
+
+func (p *parser) tuple(context tupleContext) Expr {
+	if trace {
+		defer p.trace("tuple")()
+	}
+
+	var elem func() Expr
+	switch context {
+	case tupleType:
+		elem = p.type_
+	case tupleExpr:
+		elem = p.expr
+	}
+
+	pos := p.pos()
+	p.want(_Lparen)
+	if p.tok == _Rparen {
+		// empty tuple
+		t := &TupleExpr{}
+		t.pos = pos
+		t.Rparen = p.pos()
+		p.next()
+		return p.tupleToStd(t, context)
+	}
+
+	var x Expr
+	var t *TupleExpr
+	trailingComma := false
+
+	rparen := p.list("tuple", _Comma, _Rparen, func() bool {
+		e := elem()
+		switch {
+		case x == nil:
+			x = e
+		case t == nil:
+			t = new(TupleExpr)
+			t.ElemList = []Expr{x}
+			fallthrough
+		default:
+			t.ElemList = append(t.ElemList, e)
+		}
+		trailingComma = p.tok == _Comma
+		return false
+	})
+
+	if trailingComma && t == nil {
+		t = new(TupleExpr)
+		t.ElemList = []Expr{x}
+	}
+
+	if t != nil {
+		t.pos = pos
+		t.Rparen = rparen
+		return p.tupleToStd(t, context)
+	}
+
+	return x
+}
+
+func (p *parser) tupleExprToStd(t *TupleExpr) Expr {
+	sel := new(SelectorExpr)
+	sel.pos = p.pos()
+	sel.X = NewName(p.pos(), "tuple")
+	sel.Sel = NewName(p.pos(), fmt.Sprintf("MakeOf%d", len(t.ElemList)))
+
+	call := new(CallExpr)
+	call.pos = p.pos()
+	call.Fun = sel
+	call.ArgList = t.ElemList
+
+	return call
+}
+
+func (p *parser) tupleTypeToStd(t *TupleExpr) Expr {
+	sel := new(SelectorExpr)
+	sel.pos = p.pos()
+	sel.X = NewName(p.pos(), "tuple")
+	sel.Sel = NewName(p.pos(), fmt.Sprintf("Of%d", len(t.ElemList)))
+
+	// Empty tuple case
+	if len(t.ElemList) == 0 {
+		return sel
+	}
+
+	lst := new(ListExpr)
+	lst.ElemList = t.ElemList
+
+	ind := new(IndexExpr)
+	ind.X = sel
+	ind.Index = lst
+
+	return ind
+}
+
+func (p *parser) tupleToStd(t *TupleExpr, form tupleContext) Expr {
+	p.tupleUsed = true
+	switch form {
+	case tupleType:
+		return p.tupleTypeToStd(t)
+	case tupleExpr:
+		return p.tupleExprToStd(t)
+	default:
+		panic("unreachable")
+	}
 }
 
 func (te *TernaryExpr) IsNil() bool {
@@ -1039,7 +1199,7 @@ func (p *parser) callStmt() *CallStmt {
 	return s
 }
 
-// Operand     = Literal | OperandName | MethodExpr | "(" Expression ")" .
+// Operand     = Literal | OperandName | MethodExpr | TupleExpr | "(" Expression ")" .
 // Literal     = BasicLit | CompositeLit | FunctionLit .
 // BasicLit    = int_lit | float_lit | imaginary_lit | rune_lit | string_lit .
 // OperandName = identifier | QualifiedIdent.
@@ -1057,11 +1217,25 @@ func (p *parser) operand(keep_parens bool) Expr {
 
 	case _Lparen:
 		pos := p.pos()
-		p.next()
-		p.xnest++
-		x := p.expr()
-		p.xnest--
-		p.want(_Rparen)
+
+		var x Expr
+
+		if p.tupleEnabled() {
+			p.xnest++
+			x = p.tuple(tupleExpr)
+			p.xnest--
+
+			// Tuples don't need extra parentheses.
+			if _, ok := x.(*TupleExpr); ok {
+				return x
+			}
+		} else {
+			p.next()
+			p.xnest++
+			x = p.expr()
+			p.xnest--
+			p.want(_Rparen)
+		}
 
 		// Optimization: Record presence of ()'s only where needed
 		// for error reporting. Don't bother in other cases; it is
@@ -1455,20 +1629,24 @@ func (p *parser) typeOrNil() Expr {
 		return p.qualifiedName(nil)
 
 	case _Lparen:
-		p.next()
-		t := p.type_()
-		p.want(_Rparen)
-		// The parser doesn't keep unnecessary parentheses.
-		// Set the flag below to keep them, for testing
-		// (see e.g. tests for go.dev/issue/68639).
-		const keep_parens = false
-		if keep_parens {
-			px := new(ParenExpr)
-			px.pos = pos
-			px.X = t
-			t = px
+		if p.tupleEnabled() {
+			return p.tuple(tupleType)
+		} else {
+			p.next()
+			t := p.type_()
+			p.want(_Rparen)
+			// The parser doesn't keep unnecessary parentheses.
+			// Set the flag below to keep them, for testing
+			// (see e.g. tests for go.dev/issue/68639).
+			const keep_parens = false
+			if keep_parens {
+				px := new(ParenExpr)
+				px.pos = pos
+				px.X = t
+				t = px
+			}
+			return t
 		}
-		return t
 	}
 
 	return nil
@@ -1625,8 +1803,10 @@ func (p *parser) funcResult() []*Field {
 		defer p.trace("funcResult")()
 	}
 
-	if p.got(_Lparen) {
-		return p.paramList(nil, nil, _Rparen, false, false)
+	if !p.tupleEnabled() {
+		if p.got(_Lparen) {
+			return p.paramList(nil, nil, _Rparen, false, false)
+		}
 	}
 
 	pos := p.pos()
@@ -1938,10 +2118,6 @@ func (p *parser) embeddedTerm() Expr {
 
 // ParameterDecl = [ IdentifierList ] [ "..." ] Type .
 func (p *parser) paramDeclOrNil(name *Name, follow token) *Field {
-	if trace {
-		defer p.trace("paramDeclOrNil")()
-	}
-
 	// type set notation is ok in type parameter lists
 	typeSetsOk := follow == _Rbrack
 
@@ -1977,6 +2153,13 @@ func (p *parser) paramDeclOrNil(name *Name, follow token) *Field {
 				// name "[" n "]" E "|" ...
 				f = p.embeddedElem(f)
 			}
+			return f
+		}
+
+		// Tuple type
+		if p.tupleEnabled() && p.tok == _Lparen {
+			f.Type = p.tuple(tupleType)
+			f.Name = name
 			return f
 		}
 
@@ -2732,7 +2915,11 @@ func (p *parser) stmtOrNil() Stmt {
 		s.pos = p.pos()
 		p.next()
 		if p.tok != _Semi && p.tok != _Rbrace {
-			s.Results = p.exprList()
+			if p.tupleEnabled() {
+				s.Results = p.expr()
+			} else {
+				s.Results = p.exprList()
+			}
 		}
 		return s
 

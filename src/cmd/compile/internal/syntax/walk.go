@@ -185,6 +185,13 @@ func (w walker) node(n Node) {
 	case *SliceType:
 		w.node(n.Elem)
 
+	case *TupleExpr:
+		for _, x := range n.ElemList {
+			if x != nil {
+				w.node(x)
+			}
+		}
+
 	case *DotsType:
 		w.node(n.Elem)
 
