@@ -5,18 +5,18 @@ import "testing"
 
 var (
 	sinkInt int
-	valA, valB = 100, 200 
+	valA, valB = 100, 200
 )
 
 func condition(i int) bool {
 	return i % 3 > 1
 }
 
-func BenchmarkTernaryExpression(b *testing.B) {
+func Benchmark(b *testing.B) {
 	getA := func() int { return 100 }
 	getB := func() int { return 200 }
 
-	b.Run("StandardIfAssign", func(sb *testing.B) {
+	b.Run("IfAssign", func(sb *testing.B) {
 		var res int
 		for i := 0; i < sb.N; i++ {
 			if condition(i) {
@@ -28,7 +28,7 @@ func BenchmarkTernaryExpression(b *testing.B) {
 		sinkInt = res
 	})
 
-	b.Run("TernaryExprAssign", func(sb *testing.B) {
+	b.Run("CondExprAssign", func(sb *testing.B) {
 		var res int
 		for i := 0; i < sb.N; i++ {
 			res = if condition(i) { valA } else { valB }
@@ -36,7 +36,7 @@ func BenchmarkTernaryExpression(b *testing.B) {
 		sinkInt = res
 	})
 
-	b.Run("StandardIfFuncCall", func(sb *testing.B) {
+	b.Run("IfFuncCall", func(sb *testing.B) {
 		var res int
 		for i := 0; i < sb.N; i++ {
 			if condition(i) {
@@ -48,7 +48,7 @@ func BenchmarkTernaryExpression(b *testing.B) {
 		sinkInt = res
 	})
 
-	b.Run("TernaryExprFuncCall", func(sb *testing.B) {
+	b.Run("CondExprFuncCall", func(sb *testing.B) {
 		var res int
 		for i := 0; i < sb.N; i++ {
 			res = if condition(i) { getA() } else { getB() }
