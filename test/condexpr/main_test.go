@@ -12,7 +12,7 @@ func condition(i int) bool {
 	return i % 3 > 1
 }
 
-func Benchmark(b *testing.B) {
+func Bench(b *testing.B) {
 	getA := func() int { return 100 }
 	getB := func() int { return 200 }
 
