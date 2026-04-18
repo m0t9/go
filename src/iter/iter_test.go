@@ -110,7 +110,7 @@ func init() {
 	}
 }
 
-func BenchmarkMap(b *testing.B) {
+func BenchMap(b *testing.B) {
 	b.Run("Iterator", func(b *testing.B) {
 		seq := Seq2[int, int](slices.All(testData))
 		mapper := func(i, v int) (int, int) { return i, v * 2 }
@@ -152,7 +152,7 @@ func BenchmarkFilter(b *testing.B) {
 	})
 }
 
-func BenchmarkReduce(b *testing.B) {
+func BenchReduce(b *testing.B) {
 	b.Run("Iterator", func(b *testing.B) {
 		seq := Seq2[int, int](slices.All(testData))
 		reducer := func(acc, i, v int) int { return acc + v }
@@ -173,7 +173,7 @@ func BenchmarkReduce(b *testing.B) {
 	})
 }
 
-func BenchmarkChain(b *testing.B) {
+func BenchChain(b *testing.B) {
 	b.Run("Iterator", func(b *testing.B) {
 		seq := Seq2[int, int](slices.All(testData))
 
