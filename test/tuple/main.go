@@ -24,6 +24,21 @@ func unpacking() {
 	f(tp...)
 }
 
+func sliceVariadicUnpacking() {
+	sum := func(values ...int) int {
+		res := 0
+		for _, v := range values {
+			res += v
+		}
+		return res
+	}
+
+	values := []int{1, 2, 3}
+	if sum(values...) != 6 {
+		panic("slice variadic unpacking does not work")
+	}
+}
+
 func passingToStructures() {
 	f := func() (int, error) {
 		return (42, error(nil))
@@ -62,6 +77,7 @@ func withGenerics[T any, V any](t T, v V) {
 func main() {
 	membersAccess()
 	unpacking()
+	sliceVariadicUnpacking()
 	passingToStructures()
 	basicPatternMatching()
 	withGenerics("string", 12)
