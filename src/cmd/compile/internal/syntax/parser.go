@@ -35,7 +35,8 @@ type parser struct {
 	xnest  int    // expression nesting level (for complit ambiguity resolution)
 	indent []byte // tracing support
 
-	tupleUsed bool // whether to import package with tuples to given file
+	tupleUsed          bool // whether to import package with tuples to given file
+	disableTupleUnpack bool // it is true when parsing arguments list in call (like f(a...))
 }
 
 var goroot string
@@ -891,8 +892,7 @@ func (p *parser) expr() Expr {
 
 	// Process unpack of tuple in a form, for instance
 	// a, b := tup...
-	// f(tup...)
-	if p.tok == _DotDotDot && p.tupleEnabled() {
+	if p.tok == _DotDotDot && p.tupleEnabled() && !p.disableTupleUnpack {
 		sel := new(SelectorExpr)
 		sel.pos = p.pos()
 		sel.X = e
@@ -2924,7 +2924,10 @@ func (p *parser) argList() (list []Expr, hasDots bool) {
 
 	p.xnest++
 	p.list("argument list", _Comma, _Rparen, func() bool {
+		prevTupleUnpack := p.disableTupleUnpack
+		p.disableTupleUnpack = true
 		list = append(list, p.expr())
+		p.disableTupleUnpack = prevTupleUnpack
 		hasDots = p.got(_DotDotDot)
 		return hasDots
 	})

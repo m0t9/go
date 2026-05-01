@@ -9,6 +9,7 @@ package types2
 import (
 	"cmd/compile/internal/syntax"
 	. "internal/types/errors"
+	"strconv"
 	"strings"
 )
 
@@ -473,6 +474,18 @@ func (check *Checker) arguments(call *syntax.CallExpr, sig *Signature, targs []T
 	npars := sig.params.Len()
 	ddd := hasDots(call)
 
+	// If in expr f(t...) variable t was tuple.
+	membersTypes := tupleMembersTypes(args, ddd)
+	if membersTypes != nil {
+		expanded := make([]*operand, len(membersTypes))
+		for i, typ := range membersTypes {
+			expanded[i] = &operand{mode: value, expr: args[0].expr, typ: typ}
+		}
+		args = expanded
+		nargs = len(args)
+		ddd = false
+	}
+
 	// set up parameters
 	sigParams := sig.params // adjusted for variadic functions (may be nil for empty parameter lists!)
 	adjusted := false       // indicates if sigParams is different from sig.params
@@ -656,6 +669,37 @@ func (check *Checker) arguments(call *syntax.CallExpr, sig *Signature, targs []T
 	}
 
 	return
+}
+
+func tupleMembersTypes(args []*operand, hasDots bool) []Type {
+	if !hasDots || len(args) != 1 {
+		return nil
+	}
+
+	named, _ := Unalias(args[0].typ).(*Named)
+	if named == nil {
+		return nil
+	}
+
+	obj := named.Obj()
+	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "tuple" {
+		return nil
+	}
+
+	if !strings.HasPrefix(obj.Name(), "Of") {
+		return nil
+	}
+
+	n, err := strconv.Atoi(strings.TrimPrefix(obj.Name(), "Of"))
+	if err != nil || named.TypeArgs().Len() != n {
+		return nil
+	}
+
+	types := make([]Type, n)
+	for i := range types {
+		types[i] = named.TypeArgs().At(i)
+	}
+	return types
 }
 
 var cgoPrefixes = [...]string{
