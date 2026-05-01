@@ -109,11 +109,30 @@ func walkExpr1(n ir.Node, init *ir.Nodes) ir.Node {
 
 		r := typecheck.TempAt(base.Pos, ir.CurFunc, n.Type())
 		cond := walkExpr(n.Cond, init)
+
+		var thenInit ir.Nodes
 		thenAssign := ir.NewAssignStmt(base.Pos, r, n.Then)
+		thenResult := walkAssign(&thenInit, thenAssign)
+
+		var elseInit ir.Nodes
 		elseAssign := ir.NewAssignStmt(base.Pos, r, n.Else)
-		ifstmt := ir.NewIfStmt(base.Pos, cond, []ir.Node{thenAssign}, []ir.Node{elseAssign})
+		elseResult := walkAssign(&elseInit, elseAssign)
+
+		thenBody := append(thenInit, thenResult)
+		elseBody := append(elseInit, elseResult)
+
+		ifstmt := ir.NewIfStmt(base.Pos, cond, thenBody, elseBody)
 		init.Append(ifstmt)
 		return r
+
+	case ir.OINLCALL:
+		n := n.(*ir.InlinedCallExpr)
+		walkStmtList(n.Body)
+		for i := range n.ReturnVars {
+			n.ReturnVars[i] = walkExpr(n.ReturnVars[i], init)
+		}
+		init.Append(n.Body...)
+		return n.SingleResult()
 
 	case ir.OMETHEXPR:
 		// TODO(mdempsky): Do this right after type checking.
