@@ -128,6 +128,11 @@ func (check *Checker) initConst(lhs *Const, x *operand) {
 
 	// rhs must be a constant
 	if x.mode != constant_ {
+		if _, ok := x.expr.(*ast.TernaryExpr); ok {
+			check.errorf(x, InvalidConstInit, "can not init constant with non-constant %s",
+				"ternary expression")
+			return
+		}
 		check.errorf(x, InvalidConstInit, "%s is not constant", x)
 		if lhs.typ == nil {
 			lhs.typ = Typ[Invalid]

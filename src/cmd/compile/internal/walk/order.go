@@ -1199,6 +1199,31 @@ func (o *orderState) expr1(n, lhs ir.Node) ir.Node {
 		ir.EditChildren(n, o.edit)
 		return n
 
+	case ir.OTERNARY:
+		n := n.(*ir.TernaryExpr)
+
+		// ... = if cond { a } else { b }
+		//
+		// var r typeOf(a)
+		// if cond {
+		// 	    r = a
+		// } else {
+		// 		r = b
+		// }
+
+		r := o.newTemp(n.Type(), false)
+		cond := o.expr(n.Cond, nil)
+
+		ifstmt := ir.NewIfStmt(
+			base.Pos,
+			cond,
+			[]ir.Node{ir.NewAssignStmt(base.Pos, r, n.Then)},
+			[]ir.Node{ir.NewAssignStmt(base.Pos, r, n.Else)},
+		)
+		o.append(ifstmt)
+
+		return r
+
 	// Addition of strings turns into a function call.
 	// Allocate a temporary to hold the strings.
 	// Fewer than 5 strings use direct runtime helpers.

@@ -2929,6 +2929,13 @@ func (s *state) exprCheckPtr(n ir.Node, checkPtrOK bool) *ssa.Value {
 
 	s.stmtList(n.Init())
 	switch n.Op() {
+	case ir.OTERNARY:
+		n := n.(*ir.TernaryExpr)
+		cond := s.expr(n.Cond)
+		thenVal := s.expr(n.Then)
+		elseVal := s.expr(n.Else)
+		return s.ternary(cond, thenVal, elseVal)
+
 	case ir.OBYTES2STRTMP:
 		n := n.(*ir.ConvExpr)
 		slice := s.expr(n.X)

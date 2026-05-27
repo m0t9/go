@@ -86,6 +86,14 @@ func convlit1(n ir.Node, t *types.Type, explicit bool, context func() string) ir
 
 	// Nil is technically not a constant, so handle it specially.
 	if n.Type().Kind() == types.TNIL {
+		// If it is ternary — we can set type to it.
+		// Expression `if ... { nil } else { nil }` is valid with
+		// constraint from above.
+		if n.Op() == ir.OTERNARY {
+			n.SetType(t)
+			return n
+		}
+
 		if n.Op() != ir.ONIL {
 			base.Fatalf("unexpected op: %v (%v)", n, n.Op())
 		}

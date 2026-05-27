@@ -603,7 +603,11 @@ opSwitch:
 			v.budget++
 		}
 		v.budget -= inlineExtraPanicCost
-
+	case ir.OTERNARY:
+		n := n.(*ir.TernaryExpr)
+		v.doNode(n.Cond)
+		v.doNode(n.Then)
+		v.doNode(n.Else)
 	case ir.ORECOVER:
 		base.FatalfAt(n.Pos(), "ORECOVER missed typecheck")
 	case ir.ORECOVERFP:

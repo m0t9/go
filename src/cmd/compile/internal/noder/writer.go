@@ -5,6 +5,11 @@
 package noder
 
 import (
+	"cmd/compile/internal/base"
+	"cmd/compile/internal/ir"
+	"cmd/compile/internal/syntax"
+	"cmd/compile/internal/types"
+	"cmd/compile/internal/types2"
 	"fmt"
 	"go/constant"
 	"go/token"
@@ -13,12 +18,6 @@ import (
 	"internal/pkgbits"
 	"os"
 	"strings"
-
-	"cmd/compile/internal/base"
-	"cmd/compile/internal/ir"
-	"cmd/compile/internal/syntax"
-	"cmd/compile/internal/types"
-	"cmd/compile/internal/types2"
 )
 
 // This file implements the Unified IR package writer and defines the
@@ -1264,7 +1263,7 @@ func (w *writer) stmt(stmt syntax.Stmt) {
 func (w *writer) stmts(stmts []syntax.Stmt) {
 	dead := false
 	w.Sync(pkgbits.SyncStmts)
-	var lastLabel = -1
+	lastLabel := -1
 	for i, stmt := range stmts {
 		if _, ok := stmt.(*syntax.LabeledStmt); ok {
 			lastLabel = i
@@ -1805,6 +1804,11 @@ func (w *writer) expr(expr syntax.Expr) {
 
 	obj, inst := lookupObj(w.p, expr)
 	targs := inst.TypeArgs
+
+	if tern, ok := expr.(*syntax.TernaryExpr); ok {
+		w.ternary(tern)
+		return
+	}
 
 	if tv, ok := w.p.maybeTypeAndValue(expr); ok {
 		if tv.IsRuntimeHelper() {
@@ -2385,6 +2389,13 @@ func (w *writer) compLit(lit *syntax.CompositeLit) {
 	}
 }
 
+func (w *writer) ternary(expr *syntax.TernaryExpr) {
+	w.Code(exprTernary)
+	w.expr(expr.Cond)
+	w.expr(expr.Then)
+	w.expr(expr.Else)
+}
+
 func (w *writer) funcLit(expr *syntax.FuncLit) {
 	sig := w.p.typeOf(expr).(*types2.Signature)
 
@@ -2922,6 +2933,11 @@ func lookupObj(p *pkgWriter, expr syntax.Expr) (obj types2.Object, inst types2.I
 		}
 
 		expr = index.X
+	}
+
+	if tern, ok := expr.(*syntax.TernaryExpr); ok && tern.IsNil() {
+		obj = &types2.Nil{}
+		return
 	}
 
 	// Strip package qualifier, if present.

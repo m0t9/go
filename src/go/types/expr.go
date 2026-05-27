@@ -328,6 +328,9 @@ func (check *Checker) updateExprType(x ast.Expr, typ Type, final bool) {
 			check.updateExprType(x.X, typ, final)
 			check.updateExprType(x.Y, typ, final)
 		}
+	case *ast.TernaryExpr:
+		check.updateExprType(x.Then, typ, final)
+		check.updateExprType(x.Else, typ, final)
 
 	default:
 		panic("unreachable")
@@ -1149,6 +1152,73 @@ func (check *Checker) exprInternal(T *target, x *operand, e ast.Expr, hint Type)
 		if e.Op == token.ARROW {
 			x.expr = e
 			return statement // receive operations may appear in statement context
+		}
+	case *ast.TernaryExpr:
+		var c, then, els operand
+		check.expr(newTarget(Typ[Bool], "ternary's condition"), &c, e.Cond)
+		check.expr(T, &then, e.Then)
+		check.expr(T, &els, e.Else)
+
+		if c.mode == invalid || then.mode == invalid || els.mode == invalid {
+			goto Error
+		}
+
+		toTyped := func(op *operand) {
+			if isUntyped(op.typ) {
+				op.typ = Default(op.typ)
+			}
+		}
+
+		toTyped(&c)
+		toTyped(&then)
+		toTyped(&els)
+
+		if !isBoolean(c.typ) {
+			check.error(e, MismatchedTypes, "expected boolean in ternary condition")
+			goto Error
+		}
+
+		if then.isNil() || els.isNil() {
+			check.matchTypes(&then, &els)
+		}
+
+		if then.mode == invalid || els.mode == invalid || !Identical(then.typ, els.typ) {
+			check.errorf(e, MismatchedTypes,
+				"types of then- and else- branches of ternary operator should be identical, got: %q and %q",
+				then.typ, els.typ,
+			)
+			goto Error
+		}
+
+		check.updateExprType(e.Cond, c.typ, true)
+		check.updateExprType(e.Then, then.typ, true)
+		check.updateExprType(e.Else, els.typ, true)
+
+		branchesNil := then.mode == nilvalue && els.mode == nilvalue
+		branchesConst := then.mode == constant_ && els.mode == constant_
+
+		if branchesNil {
+			x.mode = then.mode
+			x.typ = then.typ
+			x.expr = then.expr
+			x.val = then.val
+		} else if c.mode == constant_ && branchesConst {
+			// Constant ternary expression evaluation is here.
+			if constant.BoolVal(c.val) {
+				x.typ = then.typ
+				x.mode = then.mode
+				x.expr = e.Then
+				x.val = then.val
+			} else {
+				x.typ = els.typ
+				x.mode = els.mode
+				x.expr = e.Else
+				x.val = els.val
+			}
+		} else {
+			x.typ = then.typ
+			x.mode = value
+			x.expr = e
 		}
 
 	case *ast.BinaryExpr:

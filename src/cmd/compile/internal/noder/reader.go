@@ -5,14 +5,6 @@
 package noder
 
 import (
-	"encoding/hex"
-	"fmt"
-	"go/constant"
-	"internal/buildcfg"
-	"internal/pkgbits"
-	"path/filepath"
-	"strings"
-
 	"cmd/compile/internal/base"
 	"cmd/compile/internal/dwarfgen"
 	"cmd/compile/internal/inline"
@@ -27,6 +19,13 @@ import (
 	"cmd/internal/obj"
 	"cmd/internal/objabi"
 	"cmd/internal/src"
+	"encoding/hex"
+	"fmt"
+	"go/constant"
+	"internal/buildcfg"
+	"internal/pkgbits"
+	"path/filepath"
+	"strings"
 )
 
 // This file implements cmd/compile backend's reader for the Unified
@@ -2171,6 +2170,9 @@ func (r *reader) expr() (res ir.Node) {
 	case exprFuncLit:
 		return r.funcLit()
 
+	case exprTernary:
+		return r.ternary()
+
 	case exprFieldVal:
 		x := r.expr()
 		pos := r.pos()
@@ -3065,6 +3067,16 @@ func (r *reader) compLit() ir.Node {
 		lit.SetType(typ0)
 	}
 	return lit
+}
+
+func (r *reader) ternary() ir.Node {
+	condNode := r.expr()
+	thenNode := r.expr()
+	elseNode := r.expr()
+
+	ternary := ir.NewTernaryExpr(condNode.Pos(), thenNode.Type(), condNode, thenNode, elseNode)
+	setType(ternary, thenNode.Type())
+	return ternary
 }
 
 func (r *reader) funcLit() ir.Node {

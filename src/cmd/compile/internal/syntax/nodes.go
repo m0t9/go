@@ -214,6 +214,12 @@ type (
 		expr
 	}
 
+	TernaryExpr struct {
+		Cond, Then, Else Expr
+		expr
+		isNil bool
+	}
+
 	// X.(Type)
 	AssertExpr struct {
 		X    Expr
