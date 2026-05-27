@@ -1,4 +1,4 @@
-// run
+// run -goexperiment condexpr
 
 // Copyright 2026 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -144,7 +144,6 @@ func withDefer() {
 		panic("expr returned by conditional expression executed preliminary")
 	}
 }
-
 
 func main() {
 	constants()
