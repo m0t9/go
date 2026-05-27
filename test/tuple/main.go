@@ -1,3 +1,5 @@
+// run -goexperiment tupletype
+
 // Copyright 2026 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -74,6 +76,24 @@ func withGenerics[T any, V any](t T, v V) {
 	_ = tp
 }
 
+func updatingAndCopying() {
+	tp := ("1", 2)
+	tp.I2 = 4
+
+	if tp.I2 != 4 {
+		panic("value was not updated by dot notation")
+	}
+
+	f := func(t (string, int)) {
+		t.I2 = -1
+	}
+
+	f(tp)
+	if tp.I2 == -1 {
+		panic("tuple was updated when was passed by value")
+	}
+}
+
 func main() {
 	membersAccess()
 	unpacking()
@@ -81,4 +101,5 @@ func main() {
 	passingToStructures()
 	basicPatternMatching()
 	withGenerics("string", 12)
+	updatingAndCopying()
 }
