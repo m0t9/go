@@ -1270,7 +1270,10 @@ func (p *parser) operand(keep_parens bool) Expr {
 			f := new(FuncLit)
 			f.pos = pos
 			f.Type = ftyp
+			prevTupleUnpack := p.disableTupleUnpack
+			p.disableTupleUnpack = false
 			f.Body = p.funcBody()
+			p.disableTupleUnpack = prevTupleUnpack
 
 			p.xnest--
 			return f
