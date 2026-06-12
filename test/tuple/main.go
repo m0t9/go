@@ -94,9 +94,25 @@ func updatingAndCopying() {
 	}
 }
 
+func unpackingInFuncArgument() {
+    call := func(fn func()) {
+        fn()
+    }
+    tp := (1, error(nil))
+    var x int
+    var err error
+    call(func() {
+        x, err = tp...
+    })
+    if x != 1 || err != nil {
+        panic("tuple unpacking in function literal argument does not work")
+    }
+}
+
 func main() {
 	membersAccess()
 	unpacking()
+	unpackingInFuncArgument()
 	sliceVariadicUnpacking()
 	passingToStructures()
 	basicPatternMatching()

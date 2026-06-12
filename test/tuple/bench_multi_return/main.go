@@ -56,8 +56,8 @@ func benchmark(name string, iterations int, fn func()) {
 		fn()
 	}
 	elapsed := time.Since(start)
-	nsPerOp := elapsed.Nanoseconds() / int64(iterations)
-	fmt.Printf("%-20s %10d runs   %12s total   %8d ns/op\n",
+	nsPerOp := float64(elapsed.Nanoseconds()) / float64(iterations)
+	fmt.Printf("%-20s %10d runs   %12s total   %f ns/op\n",
 		name, iterations, elapsed, nsPerOp)
 }
 
