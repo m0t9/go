@@ -211,6 +211,7 @@ package iter
 import (
 	"internal/race"
 	"runtime"
+	"tuple"
 	"unsafe"
 )
 
@@ -469,3 +470,67 @@ func Pull2[K, V any](seq Seq2[K, V]) (next func() (K, V, bool), stop func()) {
 // goexitPanicValue is a sentinel value indicating that an iterator
 // exited via runtime.Goexit.
 var goexitPanicValue any = new(int)
+
+// Mmap returns an iterator over f applied to seq items.
+// Exists only for multiple return values reason.
+func Mmap[A, B, C, D any](f func(A, B) (C, D), seq Seq2[A, B]) Seq2[C, D] {
+	return func(yield func(C, D) bool) {
+		for k, v := range seq {
+			if !yield(f(k, v)) {
+				break
+			}
+		}
+	}
+}
+
+func Map[A, B, C, D any](f func(A, B) tuple.Of2[C, D], seq Seq2[A, B]) Seq2[C, D] {
+	return func(yield func(C, D) bool) {
+		for k, v := range seq {
+			if !yield(f(k, v).Unpack()) {
+				break
+			}
+		}
+	}
+}
+
+// Filter returns an iterator over seq pairs (a, b) for that f(a, b) is true.
+func Filter[A, B any](f func(A, B) bool, seq Seq2[A, B]) Seq2[A, B] {
+	return func(yield func(A, B) bool) {
+		for k, v := range seq {
+			if f(k, v) && !yield(k, v) {
+				break
+			}
+		}
+	}
+}
+
+// Reduce takes res and pairs (a, b) of the seq and applies the function to them, returning and recalculating res in a manner
+// res = f(res, a, b)
+func Reduce[A, B, R any](res R, f func(R, A, B) R, seq Seq2[A, B]) R {
+	for k, v := range seq {
+		res = f(res, k, v)
+	}
+	return res
+}
+
+// Keys returns an iterator over keys from given key-value pairs.
+func Keys[A, B any](seq Seq2[A, B]) Seq[A] {
+	return func(yield func(A) bool) {
+		for a := range seq {
+			if !yield(a) {
+				break
+			}
+		}
+	}
+}
+
+// Values returns an iterator over values from given key-value pairs.
+func Values[A, B any](seq Seq2[A, B]) Seq[B] {
+	return func(yield func(B) bool) {
+		for _, b := range seq {
+			if !yield(b) {
+				break
+			}
+		}
+	}
+}

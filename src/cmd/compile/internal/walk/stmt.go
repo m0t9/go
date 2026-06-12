@@ -7,6 +7,7 @@ package walk
 import (
 	"cmd/compile/internal/base"
 	"cmd/compile/internal/ir"
+	"cmd/compile/internal/staticinit"
 )
 
 // The result of walkStmt MUST be assigned back to n, e.g.
@@ -75,6 +76,25 @@ func walkStmt(n ir.Node) ir.Node {
 			}
 		}
 		return n
+
+	case ir.OINLCALL:
+		n := n.(*ir.InlinedCallExpr)
+		if n.Typecheck() == 0 {
+			base.Fatalf("missing typecheck: %+v", n)
+		}
+
+		init := ir.TakeInit(n)
+		walkStmtList(n.Body)
+		for _, result := range n.ReturnVars {
+			if staticinit.AnySideEffects(result) {
+				base.FatalfAt(result.Pos(), "inlined call result has side effects: %v", result)
+			}
+		}
+		if len(init) > 0 {
+			init.Append(ir.NewBlockStmt(n.Pos(), n.Body))
+			return ir.NewBlockStmt(n.Pos(), init)
+		}
+		return ir.NewBlockStmt(n.Pos(), n.Body)
 
 	// special case for a receive where we throw away
 	// the value received.

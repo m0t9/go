@@ -303,6 +303,11 @@ func walk(v *visitor, ek edge.Kind, index int, node ast.Node) {
 	case *ast.BadDecl:
 		// nothing to do
 
+	case *ast.TernaryExpr:
+		walk(v, edge.TernaryExpr_Cond, -1, n.Cond)
+		walk(v, edge.TernaryExpr_Then, -1, n.Then)
+		walk(v, edge.TernaryExpr_Else, -1, n.Else)
+
 	case *ast.GenDecl:
 		if n.Doc != nil {
 			walk(v, edge.GenDecl_Doc, -1, n.Doc)

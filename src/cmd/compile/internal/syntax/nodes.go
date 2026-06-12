@@ -187,6 +187,14 @@ type (
 		expr
 	}
 
+	// ( ElemList[0], ElemList[1], ... )
+	// Can be tuple type declaration or its value declaration
+	TupleExpr struct {
+		ElemList []Expr
+		Rparen   Pos
+		expr
+	}
+
 	// X.Sel
 	SelectorExpr struct {
 		X   Expr
@@ -212,6 +220,12 @@ type (
 		// slice of string" error when Index[2] is missing.
 		Full bool
 		expr
+	}
+
+	TernaryExpr struct {
+		Cond, Then, Else Expr
+		expr
+		isNil bool
 	}
 
 	// X.(Type)

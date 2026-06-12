@@ -290,7 +290,7 @@ func (check *Checker) updateExprType(x syntax.Expr, typ Type, final bool) {
 		}
 		return
 
-	case *syntax.CallExpr:
+	case *syntax.CallExpr, *syntax.TernaryExpr:
 		// Resulting in an untyped constant (e.g., built-in complex).
 		// The respective calls take care of calling updateExprType
 		// for the arguments if necessary.
@@ -785,6 +785,83 @@ func init() {
 	}
 }
 
+func (check *Checker) ternary(T *target, x *operand, tern *syntax.TernaryExpr) {
+	var c, t, e operand
+
+	// Derive types for all the parts of ternary expression.
+	check.expr(newTarget(Typ[Bool], "ternary's condition"), &c, tern.Cond)
+	check.expr(T, &t, tern.Then)
+	check.expr(T, &e, tern.Else)
+
+	// If at least one derivation failed — return.
+	if c.mode == invalid || t.mode == invalid || e.mode == invalid {
+		return
+	}
+
+	toTyped := func(op *operand) {
+		if isUntyped(op.typ) {
+			op.typ = Default(op.typ)
+		}
+	}
+
+	// Make untyped type default typed one.
+	toTyped(&c)
+	toTyped(&t)
+	toTyped(&e)
+
+	if !isBoolean(c.typ) {
+		check.errorf(&c, MismatchedTypes, "type of the ternary's condition should be %s", "boolean")
+	}
+
+	// If at least one of the branches is nil, attempt to match types.
+	if t.isNil() && !e.isNil() {
+		check.convertUntyped(&t, e.typ)
+	} else {
+		check.convertUntyped(&e, t.typ)
+	}
+
+	// If match failed, or types of then- and else- branches different — fail.
+	if t.mode == invalid || e.mode == invalid || !Identical(t.typ, e.typ) {
+		check.errorf(&t, MismatchedTypes,
+			"types of then- and else- branches of ternary operator should be identical, got: %q and %q",
+			t.typ, e.typ)
+	}
+
+	// Set types of the expressions to the context.
+	check.updateExprType(tern.Cond, c.typ, true)
+	check.updateExprType(tern.Then, t.typ, true)
+	check.updateExprType(tern.Else, e.typ, true)
+
+	branchesNil := t.mode == nilvalue && e.mode == nilvalue
+	branchesConst := t.mode == constant_ && e.mode == constant_
+
+	if branchesNil {
+		// Return nil always. Setting a type will be attempted later.
+		tern.SetNil()
+		x.mode = t.mode
+		x.typ = t.typ
+		x.id = t.id
+		x.expr = tern.Then
+		x.val = t.val
+	} else if c.mode == constant_ && branchesConst {
+		if constant.BoolVal(c.val) {
+			x.typ = t.typ
+			x.mode = t.mode
+			x.expr = tern.Then
+			x.val = t.val
+		} else {
+			x.typ = e.typ
+			x.mode = e.mode
+			x.expr = tern.Else
+			x.val = e.val
+		}
+	} else {
+		x.typ = t.typ
+		x.mode = value
+		x.expr = tern
+	}
+}
+
 // If e != nil, it must be the binary expression; it may be nil for non-constant expressions
 // (when invoked for an assignment operation where the binary expression is implicit).
 func (check *Checker) binary(x *operand, e syntax.Expr, lhs, rhs syntax.Expr, op syntax.Operator) {
@@ -1087,7 +1164,8 @@ func (check *Checker) exprInternal(T *target, x *operand, e syntax.Expr, hint Ty
 		if x.mode == invalid {
 			goto Error
 		}
-
+	case *syntax.TernaryExpr:
+		check.ternary(T, x, e)
 	case *syntax.SliceExpr:
 		check.sliceExpr(x, e)
 		if x.mode == invalid {
