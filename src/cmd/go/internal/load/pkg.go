@@ -15,6 +15,7 @@ import (
 	"go/build"
 	"go/scanner"
 	"go/token"
+	"internal/buildcfg"
 	"internal/godebug"
 	"internal/platform"
 	"io/fs"
@@ -1920,6 +1921,9 @@ func (p *Package) load(ctx context.Context, opts PackageOpts, path string, stk *
 			addImport("syscall", true)
 		}
 
+		if buildcfg.Experiment.TupleType && !p.Standard {
+			addImport("tuple", true)
+		}
 		// SWIG adds imports of some standard packages.
 		if p.UsesSwig() {
 			addImport("unsafe", true)

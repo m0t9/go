@@ -2124,19 +2124,38 @@ func (w *writer) expr(expr syntax.Expr) {
 		sigType := types2.CoreType(tv.Type).(*types2.Signature)
 		paramTypes := sigType.Params()
 
+		// Function call expr.
 		w.Code(exprCall)
 		writeFunExpr()
 		w.pos(expr)
 
+		// If there is only one argument with dots, let's try to
+		// consider it as tuple.
+		var tupleMembers []*types2.Var
+		if expr.HasDots && len(expr.ArgList) == 1 {
+			tupleMembers = tupleUnpackMembers(w.p.typeOf(expr.ArgList[0]))
+		}
+		// If it was not tuple — preserve hasDots as true.
+		hasDots := expr.HasDots && tupleMembers == nil
+
 		paramType := func(i int) types2.Type {
-			if sigType.Variadic() && !expr.HasDots && i >= paramTypes.Len()-1 {
+			if sigType.Variadic() && !hasDots && i >= paramTypes.Len()-1 {
 				return paramTypes.At(paramTypes.Len() - 1).Type().(*types2.Slice).Elem()
 			}
 			return paramTypes.At(i).Type()
 		}
 
+		// If it was tuple, write it individually.
+		if tupleMembers != nil {
+			w.tupleToMultiExpr(expr, paramType, expr.ArgList[0], tupleMembers)
+			w.Bool(false) // without dots
+			if rtype != nil {
+				w.rtype(rtype)
+			}
+			break
+		}
 		w.multiExpr(expr, paramType, expr.ArgList)
-		w.Bool(expr.HasDots)
+		w.Bool(hasDots)
 		if rtype != nil {
 			w.rtype(rtype)
 		}
@@ -2300,6 +2319,22 @@ func (w *writer) multiExpr(pos poser, dstType func(int) types2.Type, exprs []syn
 	for i, expr := range exprs {
 		w.implicitConvExpr(dstType(i), expr)
 	}
+}
+
+func (w *writer) tupleToMultiExpr(pos poser, dstType func(int) types2.Type, expr syntax.Expr, fields []*types2.Var) {
+	w.Sync(pkgbits.SyncMultiExpr)
+	w.Bool(false) // No dots. Tuple members assigned to arguments exactly 1-to-1.
+	w.Len(len(fields))
+	for _, field := range fields {
+		w.tupleMemberToArg(expr, field)
+	}
+}
+
+func (w *writer) tupleMemberToArg(expr syntax.Expr, field *types2.Var) {
+	w.Code(exprFieldVal)
+	w.expr(expr)
+	w.pos(expr)
+	w.selector(field)
 }
 
 // implicitConvExpr is like expr, but if dst is non-nil and different
@@ -2466,6 +2501,38 @@ func isTuple(typ types2.Type) bool {
 	// Note: types2.Unalias is unnecessary here, since tuple types can't be aliased.
 	_, ok := typ.(*types2.Tuple)
 	return ok
+}
+
+func tupleUnpackMembers(typ types2.Type) []*types2.Var {
+	named, _ := types2.Unalias(typ).(*types2.Named)
+	if named == nil {
+		return nil
+	}
+
+	obj := named.Obj()
+	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "tuple" {
+		return nil
+	}
+
+	n := named.TypeArgs().Len()
+	if obj.Name() != fmt.Sprintf("Of%d", n) {
+		return nil
+	}
+
+	str, _ := named.Underlying().(*types2.Struct)
+	if str == nil || str.NumFields() != n {
+		return nil
+	}
+
+	fields := make([]*types2.Var, n)
+	for i := range fields {
+		field := str.Field(i)
+		if field.Name() != fmt.Sprintf("I%d", i+1) {
+			return nil
+		}
+		fields[i] = field
+	}
+	return fields
 }
 
 func (w *writer) itab(typ, iface types2.Type) {
